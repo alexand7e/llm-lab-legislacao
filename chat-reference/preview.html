@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>chat-reference preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css">
+<link rel="stylesheet" href="chat-messages.css">
+<script type="importmap">
+{ "imports": {
+  "marked": "https://cdn.jsdelivr.net/npm/marked@12/lib/marked.esm.js",
+  "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.es.mjs"
+} }
+</script>
+<style>
+  body { margin: 0; background: #F2F3F6; font-family: system-ui, sans-serif; color: #0F1419; }
+  #app { max-width: 820px; margin: 0 auto; padding: 24px 16px 80px; }
+  .bar { display: flex; gap: 8px; margin-bottom: 16px; }
+  .bar button { padding: 8px 12px; border: 1px solid #E7EAEE; background: #fff; border-radius: 8px; cursor: pointer; }
+  #log { font: 12px ui-monospace, monospace; color: #5F6B7A; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="bar">
+    <button id="replay">Reproduzir streaming</button>
+    <button id="static">Mostrar tudo</button>
+  </div>
+  <div id="root"></div>
+  <div id="log"></div>
+</div>
+<script type="module">
+// carrega o renderer sem o import de CSS (o CSS ja esta no <link>)
+const src = (await (await fetch('chat-renderer.js')).text()).replace(/^import '\.\/chat-messages\.css'\s*$/m, '')
+const R = await import(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })))
+
+const sources = [1,2,3,4,5].map(n => ({ n, title: `Documento ${n}`, ref: `pág. ${n * 3}`, snippet: `Trecho de exemplo da fonte ${n}…`, url: n === 1 ? '#' : null }))
+const toolResult = { kind: 'file', title: 'Relatório consolidado', subtitle: 'relatorio.pdf', filename: 'relatorio.pdf', meta: ['2 páginas', '148 KB'], download_url: '#', view_url: '#' }
+const compare = { kind: 'item-compare', summary: { items_total: 3, distinct_groups: 2, unit_values_count: 3, unit_median: 1250.5 }, warnings: ['Um item sem valor unitário.'],
+  items: [{ title: 'Notebook 14"', group: 'Grupo A', code: 'A-01', unit_value: 4200, total_value: 42000 }, { title: 'Monitor 24"', group: 'Grupo B', code: 'B-07', unit_value: 1250.5, total_value: 12505 }, { title: 'Licença', group: 'Grupo B', code: 'B-09', unit_value: null, total_value: null }] }
+const list = { kind: 'selectable-list', title: '3 itens disponíveis', action_id: 'compare', action_label: 'Comparar selecionados',
+  items: [1,2,3].map(i => ({ id: i, title: `Item ${i}`, subtitle: 'Subtítulo · detalhe' })) }
+
+const md = `## Resposta\n\nAqui vai um **resumo** com citação [^1] e outra [^2].\n\n- item um\n- item dois [^3]\n\n| Col A | Col B |\n|---|---|\n| 1 | 2 |\n\n\`\`\`js\nconsole.log('ok')\n\`\`\`\n\n> Observação em citação.`
+
+const events = [
+  ['meta', { model: 'modelo-x' }],
+  ['tool_start', { title: 'Gerando relatório' }],
+  ['tool_step', { label: 'Buscando dados', state: 'running' }],
+  ['tool_step', { label: 'Buscando dados', state: 'done' }],
+  ['tool_step', { label: 'Montando arquivo', state: 'running' }],
+  ['tool_done', { result: toolResult }],
+  ['text', { text: 'Pronto, segue o arquivo.' }],
+  ['text_chunk', { delta: md }],
+  ['sources', { sources }],
+]
+
+const reply = { role: 'assistant' }
+const messages = [{ role: 'user', text: 'Gere o relatório e compare os itens.' }, reply]
+const root = document.getElementById('root'), log = document.getElementById('log')
+const draw = (typing = false) => {
+  root.replaceChildren(R.renderMessages(messages, { userInitials: 'AL', assistantName: 'Assistente', typing,
+    onAction: (id, payload, label) => { log.textContent = `onAction(${id}, ${JSON.stringify(payload)}, "${label}")` } }))
+}
+const extra = () => messages.push(
+  { role: 'assistant', text: 'Comparação:', tool: { title: 'Comparação de itens', steps: [], result: compare } },
+  { role: 'assistant', tool: { title: 'Selecione itens', result: list } },
+  { role: 'assistant', tool: { title: 'Falha ao consultar', error: { title: 'Erro de conexão', detail: 'Timeout após 30s' } } })
+
+const show = () => { Object.keys(reply).forEach(k => k !== 'role' && delete reply[k]); events.forEach(([e, d]) => R.applyEvent(reply, e, d)); messages.length = 2; extra(); draw() }
+const replay = async () => {
+  Object.keys(reply).forEach(k => k !== 'role' && delete reply[k]); messages.length = 2
+  draw(true)
+  for (const [e, d] of events) { await new Promise(r => setTimeout(r, 600)); R.applyEvent(reply, e, d); draw(false) }
+  extra(); draw()
+}
+document.getElementById('replay').onclick = replay
+document.getElementById('static').onclick = show
+show()
+</script>
+</body>
+</html>
