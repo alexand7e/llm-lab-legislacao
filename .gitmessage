@@ -1,0 +1,9 @@
+# Formato: <tipo>(<escopo>): <descrição no imperativo> (#issue)
+# Regras completas: docs/commits.md
+#
+# Tipos: feat | fix | refactor | test | docs | exp | data | chore
+# Escopos: llm, ingest, index, graph, strategies, eval, finetune, cli,
+#          config, ci, tests, repo
+#
+# Assunto: imperativo, português, no máximo 72 caracteres, sem ponto final.
+# Corpo (opcional, após linha em branco): explica o PORQUÊ, nunca o quê.
