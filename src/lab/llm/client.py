@@ -156,7 +156,7 @@ class LLMClient:
             except Exception as exc:
                 if attempt == self._max_retries or not _is_retryable(exc):
                     raise
-                self._sleep(self._backoff_base_s * 2 ** attempt)
+                self._sleep(self._backoff_base_s * 2**attempt)
         raise AssertionError("unreachable")
 
     def _register_cost(self, usage: Usage) -> None:

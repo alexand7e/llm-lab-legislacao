@@ -69,8 +69,7 @@ def chat(
         None,
         "--config",
         help=(
-            "Caminho alternativo para models.yaml. Padrão: LAB_MODELS_CONFIG "
-            "ou config/models.yaml."
+            "Caminho alternativo para models.yaml. Padrão: LAB_MODELS_CONFIG ou config/models.yaml."
         ),
     ),
 ) -> None:
