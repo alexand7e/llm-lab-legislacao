@@ -93,13 +93,15 @@ Toda estratégia implementa a mesma interface, para que o runner de avaliação 
 ```python
 class Strategy(Protocol):
     name: str
+
     def answer(self, question: str) -> Answer: ...
+
 
 class Answer(BaseModel):
     text: str
-    cited_articles: list[str]      # ex.: ["lgpd:art:7"]
-    retrieved_ids: list[str]       # vazio para baseline
-    usage: Usage                   # tokens e custo estimado
+    cited_articles: list[str]  # ex.: ["lgpd:art:7"]
+    retrieved_ids: list[str]  # vazio para baseline
+    usage: Usage  # tokens e custo estimado
     latency_ms: int
 ```
 

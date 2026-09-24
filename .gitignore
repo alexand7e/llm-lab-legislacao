@@ -1,0 +1,14 @@
+# Material extraido de repo privado - NAO commitar ate revisao
+chat-reference/
+_private-src/
+.env
+.env.*
+!.env.example
+.cache/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+data/raw/

@@ -1,0 +1,56 @@
+# -----------------------------------------------------------------------------
+# File:     config/models.yaml
+# Purpose:  Model roles and providers (prices in USD per 1M tokens, filled by hand).
+# Author:   Alexandre
+# Created:  2026-09-24
+# License:  Apache-2.0
+# -----------------------------------------------------------------------------
+#
+# Configuração de papéis de modelo e provedores (spec, seção 4.2).
+#
+# Cada chamada no laboratório usa um PAPEL (generator, judge, embedding,
+# synthesizer), não um modelo fixo. Trocar de modelo/provedor é mudar este
+# arquivo ou o .env — nunca código.
+#
+# ESTRUTURA
+#   roles:      papel -> { provider, model, price_in, price_out[, dims][, timeout_s] }
+#   providers:  nome -> { base_url | base_url_env, api_key_env }
+#
+# CAMPOS
+#   roles.<papel>.provider    nome da chave em `providers`.
+#   roles.<papel>.model       id do modelo no provedor (ex.: "BAAI/bge-m3").
+#   roles.<papel>.price_in    US$ por 1M de tokens de ENTRADA (preencher na mão,
+#                             a partir da página de preços do provedor).
+#   roles.<papel>.price_out   US$ por 1M de tokens de SAÍDA (idem).
+#   roles.<papel>.dims        dimensão do vetor — só para o papel `embedding`.
+#   roles.<papel>.timeout_s   timeout da chamada em segundos (padrão 60).
+#
+#   providers.<nome>.base_url         URL literal do endpoint.
+#   providers.<nome>.base_url_env     NOME da variável de ambiente que guarda a
+#                                     URL. Alternativa a base_url; usar quando
+#                                     a URL não deve/versionar em git.
+#                                     (base_url e base_url_env são exclusivos
+#                                     e pelo menos um é obrigatório.)
+#   providers.<nome>.api_key_env      NOME da variável de ambiente que guarda a
+#                                     chave. Sempre por ambiente, nunca literal.
+#
+# POR QUE URL E CHAVE VIVEM SÓ NO .env?
+#   - .env está no .gitignore; models.yaml é versionado.
+#   - O provedor `primary` (usado por generator/judge/synthesizer) aponta
+#     para PRIMARY_BASE_URL / PRIMARY_API_KEY: a URL e a chave mudam com a
+#     conta e não podem vazar. Os provedores públicos (openrouter, deepinfra,
+#     together) já têm URL pública e fixa, então usam base_url literal e só
+#     a chave vai para o .env.
+#   - Ver .env.example para a lista de variáveis.
+
+roles:
+  generator:   { provider: primary,    model: "<model-id>",       price_in: 0.00, price_out: 0.00 }
+  judge:       { provider: primary,    model: "<other-family-id>", price_in: 0.00, price_out: 0.00 }
+  embedding:   { provider: deepinfra,  model: "BAAI/bge-m3",       price_in: 0.00, dims: 1024 }
+  synthesizer: { provider: primary,   model: "<model-id>",        price_in: 0.00, price_out: 0.00 }
+
+providers:
+  primary:    { base_url_env: PRIMARY_BASE_URL, api_key_env: PRIMARY_API_KEY }  # values live in .env only
+  openrouter: { base_url: "https://openrouter.ai/api/v1",          api_key_env: OPENROUTER_API_KEY }
+  deepinfra:  { base_url: "https://api.deepinfra.com/v1/openai",   api_key_env: DEEPINFRA_API_KEY }
+  together:   { base_url: "https://api.together.xyz/v1",           api_key_env: TOGETHER_API_KEY }
