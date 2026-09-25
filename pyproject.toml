@@ -13,7 +13,9 @@ description = "Incremental lab of LLM techniques applied to Brazilian digital an
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
 dependencies = [
+    "beautifulsoup4>=4.12",
     "httpx2>=2.13",
+    "lxml>=5.0",
     "openai>=1.40",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
