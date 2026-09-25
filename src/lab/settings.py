@@ -57,8 +57,8 @@ class Provider(BaseModel):
     - ``base_url``: URL literal do endpoint (ex.: ``https://openrouter.ai/api/v1``).
     - ``base_url_env``: nome da variável de ambiente que guarda a URL.
       Usado quando a URL não pode/versionar bem (provedor ``primary``).
-      ``base_url`` e ``base_url_env`` são alternativos; o validador exige
-      pelo menos um.
+      ``base_url`` e ``base_url_env`` são exclusivos; o validador exige
+      exatamente um.
     - ``api_key_env``: nome da variável de ambiente que guarda a chave.
       Sempre por ambiente — nunca literal.
     """
@@ -68,9 +68,9 @@ class Provider(BaseModel):
     api_key_env: str
 
     @model_validator(mode="after")
-    def _has_base_url(self) -> Self:
-        if not (self.base_url or self.base_url_env):
-            raise ValueError("provider needs base_url or base_url_env")
+    def _has_one_base_url(self) -> Self:
+        if bool(self.base_url) == bool(self.base_url_env):
+            raise ValueError("provider needs exactly one of base_url or base_url_env")
         return self
 
 
