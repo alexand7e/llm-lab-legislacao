@@ -1,0 +1,48 @@
+# -----------------------------------------------------------------------------
+# File:     .pre-commit-config.yaml
+# Purpose:  Local git hooks: hygiene, ruff and pyright before each commit.
+# Author:   Alexandre
+# Created:  2026-09-25
+# License:  Apache-2.0
+# -----------------------------------------------------------------------------
+#
+# Instalação (uma vez por clone):
+#   uv run pre-commit install
+#
+# Ruff e pyright rodam via `uv run` (hooks locais), então usam exatamente as
+# versões travadas em uv.lock — as mesmas do CI. Testes ficam só no CI.
+
+# chat-reference/ é material de referência externo; mantido como veio.
+exclude: ^chat-reference/
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types_or: [python, pyi]
+      - id: pyright
+        name: pyright
+        entry: uv run pyright
+        language: system
+        types: [python]
+        pass_filenames: false

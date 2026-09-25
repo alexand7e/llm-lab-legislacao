@@ -57,3 +57,13 @@ typeCheckingMode = "strict"
 testpaths = ["tests"]
 markers = ["api: calls real provider APIs; run manually with `pytest -m api`"]
 addopts = "-m 'not api'"
+
+# Gate de cobertura (SPEC 8.5): aplicado quando o pytest roda com --cov,
+# como no CI; `pytest -m api` sem --cov não é afetado.
+[tool.coverage.run]
+source = ["lab"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true

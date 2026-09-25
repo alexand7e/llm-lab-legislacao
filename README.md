@@ -116,9 +116,11 @@ cache em disco e são gratuitas — o indicador (cache) aparece no stderr.
 
 ## Desenvolvimento
 
+    uv run pre-commit install        # uma vez por clone: hooks de ruff e pyright no commit
     uv run ruff check src tests      # lint
     uv run pyright                   # type-check (strict em src/)
     uv run pytest                    # testes (unitários; -m api para os que chamam API real)
+    uv run pytest --cov              # testes + gate de cobertura (≥ 80%, como no CI)
     uv run pre-commit run --all-files
 
 Padrão de commits em docs/commits.md (Conventional Commits, em português,
@@ -126,5 +128,6 @@ com issue). Fluxo de desenvolvimento: issue → branch → PR, em SPEC.md seçã
 
 ## Status
 
-M0 (fundação) em andamento: cliente LLM, cache SQLite e lab chat prontos;
-CI, templates e ADR 0001 pendentes (issues #3, #4, #10).
+M0 (fundação) em andamento: cliente LLM, cache SQLite, lab chat, CI,
+pre-commit e ADR 0001 prontos; templates e proteção da main pendentes
+(issues #4, #5).
