@@ -129,5 +129,5 @@ com issue). Fluxo de desenvolvimento: issue → branch → PR, em SPEC.md seçã
 ## Status
 
 M0 (fundação) em andamento: cliente LLM, cache SQLite, lab chat, CI,
-pre-commit e ADR 0001 prontos; templates e proteção da main pendentes
-(issues #4, #5).
+pre-commit, templates e ADR 0001 prontos; proteção da main pendente
+(issue #5).

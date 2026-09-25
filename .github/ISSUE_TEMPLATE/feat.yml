@@ -1,0 +1,34 @@
+name: Funcionalidade
+description: Nova funcionalidade no laboratório (código em src/lab/).
+labels: [feat]
+body:
+  - type: markdown
+    attributes:
+      value: Toda issue precisa de um milestone (SPEC 8.1). Branch sugerida `feat/<N>-<slug>`.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Objetivo
+      description: O que deve existir ao final e por quê.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Escopo
+      description: Itens a implementar; o que fica de fora.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critérios de aceite
+      description: Verificáveis (comando, teste ou saída esperada).
+      placeholder: "- [ ] `uv run lab ...` produz ..."
+    validations:
+      required: true
+  - type: input
+    id: spec
+    attributes:
+      label: Referência na SPEC
+      placeholder: "SPEC.md, seção 10 (M1)"

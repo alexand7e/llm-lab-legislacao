@@ -1,0 +1,24 @@
+name: Tarefa (chore, docs, data, adr)
+description: Infraestrutura, documentação, dados versionados ou ADR.
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Tipo
+      description: Aplique a label correspondente após criar a issue.
+      options: [chore, docs, data, adr]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: O que fazer
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Pronto quando
+      placeholder: "- [ ] ..."
+    validations:
+      required: true

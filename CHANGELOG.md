@@ -32,6 +32,8 @@ Formato baseado em Keep a Changelog.
 - .pre-commit-config.yaml: hooks de higiene, ruff e pyright (via uv run,
   mesmas versões do uv.lock).
 - Gate de cobertura de 80% em src/ (pyproject + `pytest --cov` no CI).
+- .github/: template de PR com o checklist da definição de pronto e
+  formulários de issue (funcionalidade, bug, experimento, tarefa).
 - bootstrap_github.ps1: versão PowerShell do bootstrap (labels,
   milestones, issues e proteção da main).
 - Docstrings em português em lab.llm.client, lab.llm.cache,
@@ -47,5 +49,4 @@ Formato baseado em Keep a Changelog.
 
 ### Pendente (M0)
 
-- Templates de issue e de PR — issue #4.
 - Proteção da branch main — issue #5.

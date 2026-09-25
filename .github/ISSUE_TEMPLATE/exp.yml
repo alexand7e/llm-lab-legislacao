@@ -1,0 +1,28 @@
+name: Experimento
+description: Hipótese medida com o runner de avaliação (resultados em results/).
+labels: [exp]
+body:
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hipótese
+      description: O que se espera observar e em quais categorias de pergunta.
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Configuração
+      description: Estratégia, papéis de modelo, versão do prompt e do dataset, referência de comparação.
+    validations:
+      required: true
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Métricas de decisão
+      description: Métricas da SPEC 7.3 que decidem o resultado e o limite de custo do run.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: O PR do experimento deve trazer a tabela de métricas no corpo e o run gerado a partir de commit limpo (SPEC 7.4).
