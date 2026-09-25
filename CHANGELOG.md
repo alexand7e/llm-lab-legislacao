@@ -19,6 +19,9 @@ Formato baseado em Keep a Changelog.
 - tests/fixtures/: recortes de HTML real para os testes do parser, gerados
   por scripts/make_fixtures.py a partir de trechos em selections.yaml.
 - Dependências beautifulsoup4 e lxml.
+- src/lab/ingest/parser.py: parser da hierarquia (Livro → ... → Subseção
+  → Artigo → Parágrafo → Inciso → Alínea), genérico para normas no
+  formato do Planalto; descarta redações riscadas e anotações de alteração.
 
 ### Adicionado (M0 — Fundação)
 
