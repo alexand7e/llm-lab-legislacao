@@ -159,6 +159,10 @@ QDRANT_URL=
 QDRANT_API_KEY=
 LAB_MAX_USD_PER_RUN=2.00
 LAB_CACHE_DIR=.cache/llm
+# opcionais: tracing no Langfuse (desligado se ausentes)
+LANGFUSE_PUBLIC_KEY=
+LANGFUSE_SECRET_KEY=
+LANGFUSE_HOST=
 ```
 
 ---
@@ -178,6 +182,7 @@ LAB_CACHE_DIR=.cache/llm
 | Testes | pytest, pytest-cov, respx (mock HTTP) |
 | Lint e formatação | ruff |
 | Tipos | pyright (modo strict em `src/`) |
+| Observabilidade | Langfuse (opcional; avaliado no M2) |
 | Hooks | pre-commit |
 | CI | GitHub Actions |
 | Gráficos do relatório | matplotlib |
@@ -407,6 +412,9 @@ A régua que mede todas as fases seguintes.
 - Validação do juiz contra 20 anotações manuais
 - Registro de runs em `results/`
 - Comando `lab compare` entre runs
+- Avaliação do Langfuse para rastreamento de chamadas e runs (integração opcional + ADR)
+
+`results/` continua sendo a fonte oficial dos resultados; o Langfuse, se adotado, é uma camada de inspeção complementar.
 
 **Aceite:** concordância juiz × anotação humana ≥ 80%; dataset congelado com tag `eval-v1`.
 
@@ -518,6 +526,7 @@ O README deve conter o aviso: *"Projeto experimental e educacional. As respostas
 | Tema | Quando decidir |
 |---|---|
 | Provedores iniciais de cada papel | M0 (ADR 0001) |
+| Adoção do Langfuse (cloud ou self-hosted) | M2 |
 | Estratégia final de chunking | M4 |
 | LightRAG versus implementação própria | M6 |
 | Provedor de fine-tuning e modelo base | M7 |
