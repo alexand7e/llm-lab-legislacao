@@ -1,0 +1,24 @@
+name: Bug
+description: Comportamento incorreto do código ou dos dados.
+labels: [fix]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu
+      description: Comportamento observado versus esperado.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Como reproduzir
+      description: Comando, commit (SHA) e entrada. Não cole chaves de API nem conteúdo do .env.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto
+      description: Papel/modelo em models.yaml, SO, versão do Python, trecho de log.
