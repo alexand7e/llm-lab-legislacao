@@ -1,9 +1,9 @@
 # llm-lab-legislacao
 
 > Laboratório incremental de técnicas com LLMs (prompting, RAG, GraphRAG e
-> fine-tuning) aplicado à legislação brasileira de direito digital e do
-> consumidor, usando provedores em nuvem via SDK compatível com a API da
-> OpenAI.
+> fine-tuning) aplicado à legislação brasileira, usando provedores em nuvem
+> via SDK compatível com a API da OpenAI. As normas do corpus são
+> configuráveis em `config/corpus.yaml`.
 
 Projeto experimental e educacional. As respostas geradas não constituem
 aconselhamento jurídico.
@@ -19,7 +19,7 @@ Cada milestone adiciona uma técnica e mede o ganho dela contra as anteriores:
 | Milestone | Técnica | Versão |
 |---|---|---|
 | M0 | Fundação (cliente LLM, cache, custo) | v0.1.0 |
-| M1 | Corpus (LGPD, Marco Civil, CDC) | v0.2.0 |
+| M1 | Corpus estruturado (coleta, parser, exportação) | v0.2.0 |
 | M2 | Avaliação (80 perguntas, juiz LLM) | v0.3.0 |
 | M3 | Baseline de prompting | v0.4.0 |
 | M4 | RAG vetorial (Qdrant) | v0.5.0 |

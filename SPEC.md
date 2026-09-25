@@ -34,13 +34,15 @@ Construir um único sistema de perguntas e respostas sobre legislação que evol
 
 ### 2.1 Corpus
 
+O corpus é **configuração**: as normas ficam em `config/corpus.yaml` (id, nome, número e URL), e nenhum módulo de `src/` depende de uma norma específica. O objetivo é que o laboratório sirva a qualquer base legal. O corpus inicial é:
+
 | Lei | Número | Fonte |
 |---|---|---|
 | Lei Geral de Proteção de Dados (LGPD) | Lei 13.709/2018 | planalto.gov.br |
 | Marco Civil da Internet | Lei 12.965/2014 | planalto.gov.br |
 | Código de Defesa do Consumidor (CDC) | Lei 8.078/1990 | planalto.gov.br |
 
-O corpus pode crescer em milestones futuros (ex.: Decreto 8.771/2016, regulamentos da ANPD), sempre via issue própria.
+O corpus pode crescer ou mudar editando `config/corpus.yaml`, sempre via issue própria.
 
 ### 2.2 Regras de tratamento
 
@@ -203,6 +205,7 @@ llm-lab-legislacao/
 ├── pyproject.toml
 ├── config/
 │   ├── models.yaml
+│   ├── corpus.yaml           # normas do corpus
 │   └── experiments/          # um YAML por experimento
 ├── prompts/                  # prompts versionados (v1.md, v2.md...)
 ├── data/

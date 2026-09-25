@@ -10,8 +10,9 @@ Formato baseado em Keep a Changelog.
 
 ### Adicionado (M1 — Corpus)
 
-- src/lab/ingest/sources.py: registro das três leis do corpus com a URL
-  do texto no Planalto.
+- config/corpus.yaml + src/lab/ingest/sources.py: normas do corpus como
+  configuração (loader tipado, caminho via LAB_CORPUS_CONFIG); nenhum
+  código depende de uma norma específica.
 - src/lab/ingest/collect.py: coletor do HTML bruto em data/raw/, com
   URL, sha256 dos bytes e data de coleta em `<lei>.meta.json`.
 - Dependência httpx2 (já transitiva via openai) declarada diretamente.
