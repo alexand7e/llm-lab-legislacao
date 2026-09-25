@@ -28,6 +28,10 @@ Formato baseado em Keep a Changelog.
   (HTTP mockado, sem chamada real de API).
 - tests/test_settings.py: testes de Settings (.env e ambiente) e do
   loader de config/models.yaml, incluindo o arquivo versionado.
+- tests/test_cli.py: testes do comando lab chat com cliente falso.
+- .pre-commit-config.yaml: hooks de higiene, ruff e pyright (via uv run,
+  mesmas versões do uv.lock).
+- Gate de cobertura de 80% em src/ (pyproject + `pytest --cov` no CI).
 - bootstrap_github.ps1: versão PowerShell do bootstrap (labels,
   milestones, issues e proteção da main).
 - Docstrings em português em lab.llm.client, lab.llm.cache,
@@ -43,5 +47,5 @@ Formato baseado em Keep a Changelog.
 
 ### Pendente (M0)
 
-- Workflow de CI no GitHub Actions — issue #3.
 - Templates de issue e de PR — issue #4.
+- Proteção da branch main — issue #5.
