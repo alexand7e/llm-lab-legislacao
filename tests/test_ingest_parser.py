@@ -181,6 +181,50 @@ def test_article_text_renders_labels():
     assert tenth.text == "Art. 10. Dez.\n§ 1º Um."
 
 
+# -- status -------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("line", "status"),
+    [
+        ("Art. 9º (VETADO).", "vetado"),
+        ("Art. 9º (Vetado) .", "vetado"),
+        ("Art. 9º (Revogado).", "revogado"),
+        ("Art. 9º (Revogada pela Lei nº 2, de 2001)", "revogado"),
+        ("Art. 9º Revogado.", "revogado"),
+        ("Art. 9º A revogação do consentimento é gratuita.", "vigente"),
+        ("Art. 9º Texto. (Redação dada pela Lei nº 2, de 2001)", "vigente"),
+    ],
+)
+def test_article_status(line, status):
+    (article,) = parse(line)
+    assert article.status == status
+
+
+def test_status_is_per_unit_inside_a_vigente_article():
+    (article,) = parse(
+        "Art. 1º Caput:",
+        "I - (revogado);",
+        "II - vigente;",
+        "§ 1º (VETADO).",
+        "§ 2º (Revogado pela Lei nº 3, de 2002)",
+        "§ 3º Vigente.",
+    )
+    assert article.status == "vigente"
+    assert [(u.key, u.status) for u in article.units] == [
+        ("I", "revogado"),
+        ("II", "vigente"),
+        ("§1", "vetado"),
+        ("§2", "revogado"),
+        ("§3", "vigente"),
+    ]
+
+
+def test_article_text_leaves_out_revoked_and_vetoed_units():
+    (article,) = parse("Art. 1º Caput:", "I - (revogado);", "II - vigente.", "§ 1º (VETADO).")
+    assert article.text == "Art. 1º Caput:\nII - vigente."
+
+
 # -- fixtures reais -----------------------------------------------------------
 
 

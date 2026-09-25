@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Literal
 
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field
@@ -135,6 +136,33 @@ def _heading_kind(word: str) -> str:
     return word.lower().translate(str.maketrans("íçã", "ica"))
 
 
+# -- status -------------------------------------------------------------------
+
+Status = Literal["vigente", "revogado", "vetado"]
+
+_REVOKED = re.compile(r"^\(?\s*revogad[oa]s?\b", re.IGNORECASE)
+_VETOED = re.compile(r"^\(?\s*vetad[oa]s?\b", re.IGNORECASE)
+
+
+def status_of(body: str, raw: str) -> Status:
+    """Status de um dispositivo a partir do texto após o rótulo.
+
+    ``body`` é o texto limpo ("(Revogado).", "(VETADO).", ...). Quando a
+    linha era só a anotação ("Art. 9º (Revogado pela Lei nº ...)"), o texto
+    limpo fica vazio e o status vem da linha original ``raw``.
+    """
+    if _REVOKED.match(body):
+        return "revogado"
+    if _VETOED.match(body):
+        return "vetado"
+    if not body:
+        if re.search(r"\brevogad", raw, re.IGNORECASE):
+            return "revogado"
+        if re.search(r"\bvetad", raw, re.IGNORECASE):
+            return "vetado"
+    return "vigente"
+
+
 # -- modelo -------------------------------------------------------------------
 
 
@@ -153,6 +181,8 @@ class Unit(BaseModel):
     - ``key``: caminho único no artigo ("§1", "I", "§3.I", "I.a").
     - ``parent``: ``key`` do dispositivo pai; ``None`` = caput.
     - ``text``: texto limpo, sem o rótulo.
+    - ``status``: ``vigente``, ``revogado`` ou ``vetado``. Há dispositivos
+      revogados dentro de artigos vigentes, por isso o status é por unidade.
     - ``raw``: linha original (com anotações), usada para status e remissões.
     """
 
@@ -161,11 +191,15 @@ class Unit(BaseModel):
     key: str
     parent: str | None = None
     text: str
+    status: Status = "vigente"
     raw: str = Field(default="", exclude=True)
 
 
 class Article(BaseModel):
-    """Um artigo da norma com sua posição na hierarquia e seus dispositivos."""
+    """Um artigo da norma com sua posição na hierarquia e seus dispositivos.
+
+    ``status`` é o do caput: um artigo revogado ou vetado por inteiro.
+    """
 
     law: str
     article: str
@@ -173,6 +207,7 @@ class Article(BaseModel):
     headings: list[Heading]
     caput: str
     units: list[Unit]
+    status: Status = "vigente"
     raw: str = Field(default="", exclude=True)
 
     @property
@@ -181,9 +216,14 @@ class Article(BaseModel):
 
     @property
     def text(self) -> str:
-        """Texto completo do artigo, com os rótulos, um dispositivo por linha."""
+        """Texto do artigo com os rótulos, um dispositivo por linha.
+
+        Só dispositivos vigentes entram; revogados e vetados ficam em ``units``.
+        """
         lines = [f"{_ordinal('Art.', self.article)} {self.caput}".rstrip()]
         for unit in self.units:
+            if unit.status != "vigente":
+                continue
             lines.append(f"{_unit_label(unit)} {unit.text}".rstrip())
         return "\n".join(lines)
 
@@ -238,6 +278,7 @@ class _Builder:
             headings=[h.model_copy() for h in self.headings],
             caput=body,
             units=[],
+            status=status_of(body, line.raw),
             raw=line.raw,
         )
         self.pending_name = None
@@ -254,7 +295,15 @@ class _Builder:
         else:
             parent = self.inciso or self.paragraph
             key = f"{parent}.{ident}" if parent else ident
-        unit = Unit(type=type_, id=ident, key=key, parent=parent, text=body, raw=line.raw)
+        unit = Unit(
+            type=type_,
+            id=ident,
+            key=key,
+            parent=parent,
+            text=body,
+            status=status_of(body, line.raw),
+            raw=line.raw,
+        )
         self.current.units.append(unit)
         self.last_unit = unit
 
@@ -316,9 +365,11 @@ __all__ = [
     "Article",
     "Heading",
     "Line",
+    "Status",
     "Unit",
     "clean",
     "extract_lines",
     "parse_html",
     "parse_lines",
+    "status_of",
 ]
