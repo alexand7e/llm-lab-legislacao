@@ -40,6 +40,7 @@ class Settings(BaseSettings):
       (o cliente aborta com ``BudgetExceededError`` ao ultrapassá-lo).
     - ``lab_cache_dir``: diretório do cache SQLite de respostas.
     - ``lab_models_config``: caminho de ``models.yaml``.
+    - ``lab_corpus_config``: caminho de ``corpus.yaml`` (normas do corpus).
 
     ``extra="ignore"``: variáveis não conhecidas (chaves de provedores,
     Qdrant etc.) não causam erro.
@@ -49,6 +50,7 @@ class Settings(BaseSettings):
     lab_max_usd_per_run: float = 2.00
     lab_cache_dir: Path = Path(".cache/llm")
     lab_models_config: Path = Path("config/models.yaml")
+    lab_corpus_config: Path = Path("config/corpus.yaml")
 
 
 class Provider(BaseModel):

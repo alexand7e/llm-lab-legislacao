@@ -1,58 +1,62 @@
 # -----------------------------------------------------------------------------
 # File:     src/lab/ingest/sources.py
-# Purpose:  Registry of the laws in the corpus and their official URLs.
+# Purpose:  Typed loader for config/corpus.yaml (the norms in the corpus).
 # Author:   Alexandre
 # Created:  2026-09-25
 # License:  Apache-2.0
 # -----------------------------------------------------------------------------
 
-"""Leis do corpus (SPEC 2.1) e a URL do texto compilado no Planalto.
+"""Normas do corpus, lidas de ``config/corpus.yaml``.
 
-O ``id`` de cada lei é o prefixo dos identificadores em ``articles.jsonl``
-(ex.: ``lgpd:art:7``). Ampliar o corpus é acrescentar uma entrada aqui, via
-issue própria.
+O corpus é configuração, não código: acrescentar ou remover uma norma é
+editar o YAML. O ``id`` de cada norma é o prefixo dos identificadores em
+``articles.jsonl`` (ex.: ``<id>:art:7``).
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pathlib import Path
+from typing import Self
+
+import yaml
+from pydantic import BaseModel, Field, model_validator
 
 
 class LawSource(BaseModel):
-    """Uma lei do corpus.
+    """Uma norma do corpus.
 
-    - ``id``: prefixo estável dos identificadores (``lgpd``, ``cdc``...).
+    - ``id``: prefixo estável dos identificadores (minúsculas, dígitos, ``_``).
     - ``name`` / ``number``: nome e número oficiais, para relatórios.
-    - ``url``: página do texto compilado no Planalto (quando existe;
-      o Marco Civil só tem a versão original, com alterações anotadas).
+    - ``url``: página do texto (de preferência a versão compilada).
     """
 
-    id: str
+    id: str = Field(pattern=r"^[a-z0-9_]+$")
     name: str
     number: str
     url: str
 
 
-LAWS: dict[str, LawSource] = {
-    law.id: law
-    for law in (
-        LawSource(
-            id="lgpd",
-            name="Lei Geral de Proteção de Dados",
-            number="Lei 13.709/2018",
-            url="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm",
-        ),
-        LawSource(
-            id="marco_civil",
-            name="Marco Civil da Internet",
-            number="Lei 12.965/2014",
-            url="https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm",
-        ),
-        LawSource(
-            id="cdc",
-            name="Código de Defesa do Consumidor",
-            number="Lei 8.078/1990",
-            url="https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm",
-        ),
-    )
-}
+class CorpusConfig(BaseModel):
+    """Conteúdo validado de ``config/corpus.yaml``."""
+
+    laws: list[LawSource] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _unique_ids(self) -> Self:
+        ids = [law.id for law in self.laws]
+        duplicated = sorted({i for i in ids if ids.count(i) > 1})
+        if duplicated:
+            raise ValueError(f"duplicated law ids: {', '.join(duplicated)}")
+        return self
+
+    def by_id(self) -> dict[str, LawSource]:
+        return {law.id: law for law in self.laws}
+
+
+def load_corpus(path: Path) -> CorpusConfig:
+    """Carregar e validar ``corpus.yaml``.
+
+    :raises pydantic.ValidationError: campos faltando/errados ou ids repetidos.
+    """
+    with path.open(encoding="utf-8") as fh:
+        return CorpusConfig.model_validate(yaml.safe_load(fh))

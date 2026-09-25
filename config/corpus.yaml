@@ -1,0 +1,31 @@
+# -----------------------------------------------------------------------------
+# File:     config/corpus.yaml
+# Purpose:  Norms in the corpus (collected, parsed and exported by lab ingest).
+# Author:   Alexandre
+# Created:  2026-09-25
+# License:  Apache-2.0
+# -----------------------------------------------------------------------------
+#
+# Cada item é uma norma:
+#   id      prefixo dos identificadores em articles.jsonl (minúsculas, dígitos, _)
+#   name    nome oficial
+#   number  número oficial
+#   url     página do texto, de preferência a versão compilada
+#
+# Mudar o corpus é editar este arquivo; nenhum código depende de uma norma.
+
+laws:
+  - id: lgpd
+    name: Lei Geral de Proteção de Dados
+    number: Lei 13.709/2018
+    url: https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm
+
+  - id: marco_civil
+    name: Marco Civil da Internet
+    number: Lei 12.965/2014
+    url: https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm
+
+  - id: cdc
+    name: Código de Defesa do Consumidor
+    number: Lei 8.078/1990
+    url: https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm
