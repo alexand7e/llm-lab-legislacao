@@ -48,6 +48,7 @@ jobs:
         if: steps.project.outputs.found == 'true'
         run: uv run pyright
 
-      - name: Testes (pytest)
+      # --cov ativa o gate fail_under de [tool.coverage.report] no pyproject.
+      - name: Testes e cobertura (pytest)
         if: steps.project.outputs.found == 'true'
-        run: uv run pytest
+        run: uv run pytest --cov
