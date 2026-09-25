@@ -22,6 +22,8 @@ Formato baseado em Keep a Changelog.
 - src/lab/ingest/parser.py: parser da hierarquia (Livro → ... → Subseção
   → Artigo → Parágrafo → Inciso → Alínea), genérico para normas no
   formato do Planalto; descarta redações riscadas e anotações de alteração.
+- Status `vigente | revogado | vetado` por artigo e por dispositivo; o
+  texto do artigo inclui só os dispositivos vigentes.
 
 ### Adicionado (M0 — Fundação)
 
