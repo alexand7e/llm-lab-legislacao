@@ -15,6 +15,9 @@ Formato baseado em Keep a Changelog.
 - src/lab/ingest/collect.py: coletor do HTML bruto em data/raw/, com
   URL, sha256 dos bytes e data de coleta em `<lei>.meta.json`.
 - Dependência httpx2 (já transitiva via openai) declarada diretamente.
+- tests/fixtures/: recortes de HTML real para os testes do parser, gerados
+  por scripts/make_fixtures.py a partir de trechos em selections.yaml.
+- Dependências beautifulsoup4 e lxml.
 
 ### Adicionado (M0 — Fundação)
 

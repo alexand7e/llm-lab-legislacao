@@ -1,0 +1,2 @@
+# Fixtures geradas de HTML real: bytes preservados (sem normalizar CRLF).
+tests/fixtures/*.html -text
