@@ -20,7 +20,7 @@ REPO_MODELS = Path(__file__).resolve().parents[1] / "config" / "models.yaml"
 def clean_env(tmp_path, monkeypatch):
     """Isola Settings de um .env real e de variáveis LAB_* do ambiente."""
     monkeypatch.chdir(tmp_path)
-    for name in ("LAB_MAX_USD_PER_RUN", "LAB_CACHE_DIR", "LAB_MODELS_CONFIG"):
+    for name in ("LAB_MAX_USD_PER_RUN", "LAB_CACHE_DIR", "LAB_MODELS_CONFIG", "LAB_CORPUS_CONFIG"):
         monkeypatch.delenv(name, raising=False)
     return tmp_path
 
@@ -30,6 +30,7 @@ def test_settings_defaults(clean_env):
     assert s.lab_max_usd_per_run == 2.00
     assert s.lab_cache_dir == Path(".cache/llm")
     assert s.lab_models_config == Path("config/models.yaml")
+    assert s.lab_corpus_config == Path("config/corpus.yaml")
 
 
 def test_settings_read_environment(clean_env, monkeypatch):

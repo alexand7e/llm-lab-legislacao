@@ -20,7 +20,7 @@ from lab.ingest.collect import (
     make_client,
     sha256_of,
 )
-from lab.ingest.sources import LAWS, LawSource
+from lab.ingest.sources import LawSource
 
 SOURCE = LawSource(id="x", name="Lei X", number="Lei 1/2000", url="https://planalto.test/x.htm")
 HTML = "<p>Art. 1º Esta Lei dispõe sobre proteção.</p>".encode("cp1252")
@@ -82,11 +82,6 @@ def test_load_raw_rejects_modified_html(tmp_path):
 def test_decode_html_prefers_utf8():
     assert decode_html("ção".encode()) == "ção"
     assert decode_html("ção".encode("cp1252")) == "ção"
-
-
-def test_registry_has_the_three_laws_on_planalto():
-    assert set(LAWS) == {"lgpd", "marco_civil", "cdc"}
-    assert all(law.url.startswith("https://www.planalto.gov.br/") for law in LAWS.values())
 
 
 def test_make_client_identifies_project():
