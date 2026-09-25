@@ -1,0 +1,26 @@
+# Trechos recortados de data/raw/<norma>.html para tests/fixtures/<norma>.html.
+# Cada item: [início, fim] — regex sobre o texto do parágrafo <p>; início
+# inclusivo, fim exclusivo; fim nulo = até o final do documento.
+# Escolha trechos que exercitem casos difíceis do parser (riscados, revogados,
+# vetados, sufixos, títulos quebrados), não trechos representativos.
+
+lgpd:
+  - ['^LEI Nº 13\.709', '^Art\. 5[º°]']
+  - ['^CAPÍTULO II\b', '^Art\. 8[º°]']
+  - ['^CAPÍTULO IX', '^Art\. 55-D']
+  - ['^Art\. 56\.', '^Art\. 58-B']
+  - ['^Brasília', null]
+
+marco_civil:
+  - ['^LEI Nº 12\.965', '^Art\. 2[º°]']
+  - ['^Art\. 5[º°]', '^III - inviolabilidade e sigilo']
+  - ['^VIII - informações claras', '^IX - consentimento']
+  - ['^Brasília', null]
+
+cdc:
+  - ['^LEI Nº 8\.078', '^Art\. 5[º°]']
+  - ['^CAPÍTULO IV\b', '^Art\. 9[º°]']
+  - ['^CAPÍTULO VI-A', '^Art\. 54-B']
+  - ['^TÍTULO II\b', '^Art\. 64']
+  - ['^Art\. 107', '^Art\. 112']
+  - ['^Brasília', null]

@@ -12,8 +12,9 @@
 # Ruff e pyright rodam via `uv run` (hooks locais), então usam exatamente as
 # versões travadas em uv.lock — as mesmas do CI. Testes ficam só no CI.
 
-# chat-reference/ é material de referência externo; mantido como veio.
-exclude: ^chat-reference/
+# Mantidos como vieram: material de referência externo e fixtures geradas
+# a partir de HTML real (espaços e CRLF originais fazem parte do teste).
+exclude: ^(chat-reference/|tests/fixtures/.*\.html$)
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
