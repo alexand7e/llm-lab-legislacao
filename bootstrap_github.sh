@@ -117,4 +117,16 @@ issue docs "Seção de limitações e ameaças à validade"
 issue docs "README final com diagrama e reprodução"
 issue docs "Artigo de divulgação"
 
+# ---------- Proteção da branch main ----------
+# SPEC 8.6: merge só via PR (0 aprovações), CI obrigatório, vale também para
+# admins; force push e deleção bloqueados.
+# O contexto "ci" precisa existir (workflow do GitHub Actions) para o merge ser permitido.
+gh api -X PUT "repos/{owner}/{repo}/branches/main/protection" --input - > /dev/null <<'JSON'
+{"required_status_checks":{"strict":true,"contexts":["ci"]},"enforce_admins":true,"required_pull_request_reviews":{"required_approving_review_count":0},"restrictions":null,"allow_force_pushes":false,"allow_deletions":false}
+JSON
+# SPEC 8.1: só merge commit; branch apagada após o merge.
+gh api -X PATCH "repos/{owner}/{repo}" -F allow_squash_merge=false -F allow_rebase_merge=false \
+  -F allow_merge_commit=true -F delete_branch_on_merge=true > /dev/null
+echo "Proteção da branch main configurada (merge só via PR, CI obrigatório)."
+
 echo "Concluído."

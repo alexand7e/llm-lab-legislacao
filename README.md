@@ -128,6 +128,6 @@ com issue). Fluxo de desenvolvimento: issue → branch → PR, em SPEC.md seçã
 
 ## Status
 
-M0 (fundação) em andamento: cliente LLM, cache SQLite, lab chat, CI,
-pre-commit, templates e ADR 0001 prontos; proteção da main pendente
-(issue #5).
+M0 (fundação) implementado: cliente LLM, cache SQLite, lab chat, CI,
+pre-commit, templates, proteção da main e ADR 0001. Falta o aceite manual
+(`uv run lab chat --role generator "olá"` com chaves reais) para a tag v0.1.0.
