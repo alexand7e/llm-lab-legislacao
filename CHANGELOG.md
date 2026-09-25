@@ -24,6 +24,8 @@ Formato baseado em Keep a Changelog.
   formato do Planalto; descarta redações riscadas e anotações de alteração.
 - Status `vigente | revogado | vetado` por artigo e por dispositivo; o
   texto do artigo inclui só os dispositivos vigentes.
+- Artigos acrescidos (ex.: `55-A`) como artigos próprios, com ordenação
+  natural (`article_key`: 55 < 55-A < 55-B < 56).
 
 ### Adicionado (M0 — Fundação)
 

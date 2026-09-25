@@ -132,6 +132,24 @@ def _ident(num: str, suffix: str | None) -> str:
     return f"{base}-{suffix.upper()}" if suffix else base
 
 
+_ARTICLE_ID = re.compile(r"^(\d+)(?:-([A-Z]+))?$")
+
+
+def article_key(ident: str) -> tuple[int, int, str]:
+    """Chave de ordenação natural de artigos.
+
+    Artigos acrescidos são artigos próprios, entre o número base e o
+    seguinte: ``"2" < "10" < "55" < "55-A" < "55-Z" < "55-AA" < "56"``.
+
+    :raises ValueError: identificador fora do formato ``<número>[-<letras>]``.
+    """
+    m = _ARTICLE_ID.match(ident)
+    if m is None:
+        raise ValueError(f"invalid article id: {ident!r}")
+    suffix = m[2] or ""
+    return int(m[1]), len(suffix), suffix
+
+
 def _heading_kind(word: str) -> str:
     return word.lower().translate(str.maketrans("íçã", "ica"))
 
@@ -367,6 +385,7 @@ __all__ = [
     "Line",
     "Status",
     "Unit",
+    "article_key",
     "clean",
     "extract_lines",
     "parse_html",
