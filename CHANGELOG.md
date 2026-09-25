@@ -26,6 +26,8 @@ Formato baseado em Keep a Changelog.
 - .env.example: template de variáveis de ambiente.
 - tests/test_llm_client.py: testes unitários do cliente, cache e custos
   (HTTP mockado, sem chamada real de API).
+- tests/test_settings.py: testes de Settings (.env e ambiente) e do
+  loader de config/models.yaml, incluindo o arquivo versionado.
 - bootstrap_github.ps1: versão PowerShell do bootstrap (labels,
   milestones, issues e proteção da main).
 - Docstrings em português em lab.llm.client, lab.llm.cache,
