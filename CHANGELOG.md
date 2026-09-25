@@ -8,6 +8,14 @@ Formato baseado em Keep a Changelog.
 
 ## Unreleased
 
+### Adicionado (M1 — Corpus)
+
+- src/lab/ingest/sources.py: registro das três leis do corpus com a URL
+  do texto no Planalto.
+- src/lab/ingest/collect.py: coletor do HTML bruto em data/raw/, com
+  URL, sha256 dos bytes e data de coleta em `<lei>.meta.json`.
+- Dependência httpx2 (já transitiva via openai) declarada diretamente.
+
 ### Adicionado (M0 — Fundação)
 
 - src/lab/llm/: cliente OpenAI-compatible com papéis de modelo,
