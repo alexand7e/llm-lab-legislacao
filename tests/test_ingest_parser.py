@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from lab.ingest.parser import Article, clean, extract_lines, parse_html
+from lab.ingest.parser import Article, article_key, clean, extract_lines, parse_html
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -179,6 +179,35 @@ def test_article_text_renders_labels():
     assert article.text == "Art. 7º Caput:\nI - um;\nParágrafo único. Fim."
     (tenth,) = parse("Art. 10. Dez.", "§ 1º Um.")
     assert tenth.text == "Art. 10. Dez.\n§ 1º Um."
+
+
+# -- artigos acrescidos -------------------------------------------------------
+
+
+def test_suffixed_articles_are_articles_of_their_own():
+    articles = parse("Art. 55. Base.", "Art. 55-A. Acrescido.", "I - inciso do 55-A;", "Art. 55-B.")
+    assert [(a.id, len(a.units)) for a in articles] == [
+        ("x:art:55", 0),
+        ("x:art:55-A", 1),
+        ("x:art:55-B", 0),
+    ]
+
+
+def test_article_key_orders_naturally():
+    ids = ["56", "55-AA", "10", "55-B", "2", "55", "55-A", "9"]
+    assert sorted(ids, key=article_key) == ["2", "9", "10", "55", "55-A", "55-B", "55-AA", "56"]
+
+
+@pytest.mark.parametrize("bad", ["", "A", "55-a", "55 A", "art. 5"])
+def test_article_key_rejects_malformed_ids(bad):
+    with pytest.raises(ValueError, match="invalid article id"):
+        article_key(bad)
+
+
+@pytest.mark.parametrize("path", sorted(FIXTURES.glob("*.html")), ids=lambda p: p.stem)
+def test_fixture_document_order_is_natural_order(path):
+    numbers = [a.article for a in parse_html(path.read_text(encoding="utf-8"), path.stem)]
+    assert numbers == sorted(numbers, key=article_key)
 
 
 # -- status -------------------------------------------------------------------
