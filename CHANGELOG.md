@@ -8,6 +8,20 @@ Formato baseado em Keep a Changelog.
 
 ## Unreleased
 
+### Adicionado (M3 — Baseline de prompting)
+
+- src/lab/strategies: interface `Strategy` e `Answer` (texto, artigos citados,
+  ids recuperados, confiança, tokens/custo e latência), `normalize_citations`
+  e `load_prompt`.
+- Estratégia `baseline` (zero-shot, sem recuperação) com o prompt versionado
+  `prompts/baseline_v1.md` e saída estruturada (`answer`, `cited_articles`,
+  `confidence`). Resposta fora do schema vira texto bruto com `parse_error`,
+  sem perder o custo da chamada.
+- `LLMClient.chat_parsed`: saída estruturada que não levanta quando a resposta
+  não valida e devolve sempre o `ChatResult`.
+- `lab ask "<pergunta>"`: pergunta ao baseline; mostra artigos citados,
+  confiança, tokens e custo.
+
 ### Corrigido (M0 — Fundação)
 
 - As chaves e URLs dos provedores no `.env` não chegavam ao cliente (só o
