@@ -8,6 +8,20 @@ Formato baseado em Keep a Changelog.
 
 ## Unreleased
 
+### Adicionado (M2 — Avaliação)
+
+- src/lab/eval/dataset.py: schema `Question` (SPEC 7.1) e `load_questions`,
+  que recusa id repetido, gabarito incoerente com a categoria e linha inválida
+  (a mensagem traz arquivo, linha e campo); `check_against_corpus` confere que
+  o gabarito existe e está vigente; `distribution_gaps` mostra o que falta
+  para as 80 perguntas oficiais.
+- src/lab/eval/metrics.py: métricas determinísticas (citação, recall@k, MRR,
+  abstenção) e agregação com custo e latência p50/p95. Métrica que não se
+  aplica é `None`, nunca zero (o baseline não recupera, então não tem MRR).
+- data/eval/questions.dev.jsonl: 16 perguntas de desenvolvimento (`dev_draft`),
+  fora do conjunto congelado; servem para testar o pipeline. As 80 oficiais
+  são escritas à mão (issue #20).
+
 ### Adicionado (M3 — Baseline de prompting)
 
 - src/lab/strategies: interface `Strategy` e `Answer` (texto, artigos citados,
