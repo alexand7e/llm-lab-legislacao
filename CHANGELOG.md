@@ -35,6 +35,11 @@ Formato baseado em Keep a Changelog.
   texto do artigo inclui só os dispositivos vigentes.
 - Artigos acrescidos (ex.: `55-A`) como artigos próprios, com ordenação
   natural (`article_key`: 55 < 55-A < 55-B < 56).
+- src/lab/ingest/references.py: remissões internas ("art. 7º", intervalos
+  como "arts. 7º a 11") e externas ("art. 5º da Lei nº 8.078"), como
+  `{target, raw}`; normas do corpus resolvem para o id do corpus
+  (`cdc:art:5`), as demais para uma chave estável (`lei:7347:art:1`).
+  Ignora texto entre aspas, anotações de alteração e dispositivos revogados.
 
 ### Adicionado (M0 — Fundação)
 
