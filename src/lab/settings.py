@@ -25,10 +25,12 @@ do provedor ``primary`` em ``config/models.yaml``.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Self
 
 import yaml
+from dotenv import dotenv_values
 from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -100,6 +102,19 @@ class ModelsConfig(BaseModel):
 
     roles: dict[str, Role]
     providers: dict[str, Provider]
+
+
+def load_env(env_file: Path = Path(".env")) -> dict[str, str]:
+    """Variáveis de ambiente para os provedores: ``.env`` com o ambiente por cima.
+
+    :class:`Settings` só enxerga os campos que declara e ignora o resto, então
+    as chaves dos provedores (``PRIMARY_API_KEY`` etc.) não chegariam ao
+    cliente vindas só do ``.env``. O ambiente do sistema tem precedência
+    (é o que o CI usa, via secrets); valores vazios do ``.env`` contam como
+    ausentes.
+    """
+    from_file = {k: v for k, v in dotenv_values(env_file).items() if v}
+    return {**from_file, **os.environ}
 
 
 def load_models_config(path: Path) -> ModelsConfig:
