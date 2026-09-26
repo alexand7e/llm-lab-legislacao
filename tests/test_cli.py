@@ -29,8 +29,9 @@ class FakeClient:
     result = ChatResult(text="oi", usage=Usage(prompt_tokens=3, completion_tokens=1, cost_usd=0.5))
     error: Exception | None = None
 
-    def __init__(self, config, *, cache=None, max_usd=0.0) -> None:
+    def __init__(self, config, *, cache=None, max_usd=0.0, env=None) -> None:
         self.cache = cache
+        self.env = env
         self.max_usd = max_usd
         self.calls: list[tuple[str, list[dict[str, str]]]] = []
         FakeClient.instances.append(self)
@@ -95,3 +96,12 @@ def test_known_errors_exit_1_on_stderr(fake, monkeypatch, error):
 def test_no_args_shows_help():
     result = runner.invoke(app, [])
     assert "chat" in result.output
+
+
+def test_chat_passes_dotenv_keys_to_the_client(fake, monkeypatch):
+    """Regressão: as chaves dos provedores vêm do .env, não só do ambiente."""
+    monkeypatch.delenv("PRIMARY_API_KEY", raising=False)
+    Path(".env").write_text("PRIMARY_API_KEY=abc\n", encoding="utf-8")
+    result = runner.invoke(app, ["chat", "olá"])
+    assert result.exit_code == 0, result.output
+    assert fake.instances[0].env["PRIMARY_API_KEY"] == "abc"
