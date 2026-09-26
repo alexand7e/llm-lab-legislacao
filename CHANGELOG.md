@@ -40,6 +40,12 @@ Formato baseado em Keep a Changelog.
   `{target, raw}`; normas do corpus resolvem para o id do corpus
   (`cdc:art:5`), as demais para uma chave estável (`lei:7347:art:1`).
   Ignora texto entre aspas, anotações de alteração e dispositivos revogados.
+- src/lab/ingest/export.py: registros `ArticleRecord` (schema da SPEC 2.3,
+  com `key`, `parent` e `status` por unidade), validados ao criar e ao ler;
+  `write_jsonl` grava `articles.jsonl` de forma determinística (normas na
+  ordem do corpus, artigos em ordem natural) e recusa ids repetidos;
+  `read_jsonl` aponta a linha inválida; `dangling_references` alerta sobre
+  remissões para artigos do corpus que não existem.
 
 ### Adicionado (M0 — Fundação)
 
