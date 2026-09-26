@@ -19,8 +19,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import httpx2
 import typer
 
+from lab.ingest.export import CorpusError
+from lab.ingest.pipeline import run_ingest
+from lab.ingest.sources import load_corpus
 from lab.llm import BudgetExceededError, LLMClient, LLMConfigError
 from lab.llm.cache import SQLiteCache
 from lab.settings import Settings, load_models_config
@@ -108,3 +112,66 @@ def chat(
         fg=typer.colors.BRIGHT_BLACK,
         err=True,
     )
+
+
+@app.command()
+def ingest(
+    fetch: bool = typer.Option(
+        False,
+        "--fetch",
+        help=(
+            "Baixa de novo todas as normas do Planalto. Sem esta opção, só baixa as "
+            "que ainda não estão em --raw-dir."
+        ),
+    ),
+    raw_dir: Path = typer.Option(
+        Path("data/raw"), "--raw-dir", help="Onde ficam o HTML bruto e o meta.json (fora do git)."
+    ),
+    output: Path = typer.Option(
+        Path("data/processed/articles.jsonl"), "--out", help="Arquivo articles.jsonl a gravar."
+    ),
+    corpus_config: Path | None = typer.Option(
+        None,
+        "--corpus",
+        help=(
+            "Caminho alternativo para corpus.yaml. Padrão: LAB_CORPUS_CONFIG ou config/corpus.yaml."
+        ),
+    ),
+) -> None:
+    """Coletar, parsear e exportar o corpus para articles.jsonl.
+
+    Lê as normas de config/corpus.yaml, confere o hash do HTML coletado e
+    grava um único articles.jsonl com todas elas. Se qualquer norma falhar,
+    nada é gravado. O resumo por norma vai para o stdout; alertas
+    (remissões para artigos que não existem no corpus) vão para o stderr.
+
+    Exemplos:
+
+        lab ingest             # usa data/raw; baixa só o que falta
+
+        lab ingest --fetch     # baixa tudo de novo
+    """
+    settings = Settings()
+    try:
+        corpus = load_corpus(corpus_config or settings.lab_corpus_config)
+        report = run_ingest(corpus, raw_dir, output, fetch=fetch)
+    except FileNotFoundError as exc:
+        typer.secho(
+            f"error: arquivo não encontrado: {exc.filename or exc}", fg=typer.colors.RED, err=True
+        )
+        raise typer.Exit(code=1) from exc
+    except (CorpusError, ValueError, httpx2.HTTPError) as exc:
+        typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    for s in report.laws:
+        status = ", ".join(f"{n} {name}" for name, n in sorted(s.by_status.items()))
+        typer.echo(f"{s.law}: {s.articles} artigos ({status}), {s.units} dispositivos")
+    typer.echo(f"{report.total} artigos gravados em {report.output}")
+    if report.dangling:
+        typer.secho(
+            f"aviso: {len(report.dangling)} remissões apontam para artigos ausentes do corpus "
+            f"(ex.: {report.dangling[0][0]} -> {report.dangling[0][1]})",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
