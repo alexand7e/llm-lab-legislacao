@@ -21,6 +21,18 @@ Formato baseado em Keep a Changelog.
 - data/eval/questions.dev.jsonl: 16 perguntas de desenvolvimento (`dev_draft`),
   fora do conjunto congelado; servem para testar o pipeline. As 80 oficiais
   são escritas à mão (issue #20).
+- src/lab/eval/runner.py: `run_eval` roda qualquer `Strategy` sobre as
+  perguntas em paralelo e devolve os resultados na ordem das perguntas. Erro
+  de uma pergunta vira resultado com `error` e a rodada continua; estouro de
+  custo ou configuração inválida aborta a rodada inteira (SPEC 7.4).
+- src/lab/eval/registry.py: cada run grava `results/<AAAAMMDD-HHMM>-<estrategia>/`
+  com `config.yaml`, `meta.json` (commit, árvore suja, custo, duração,
+  `official`), `answers.jsonl` e `metrics.json`. `official` só é verdadeiro
+  com commit limpo, conjunto real e sem erros.
+- `lab eval`: valida as perguntas contra o corpus antes de gastar, avalia o
+  baseline e imprime a tabela por categoria.
+- Cache SQLite e cliente LLM seguros para threads (lock; o runner chama o
+  cliente em paralelo).
 
 ### Adicionado (M3 — Baseline de prompting)
 
