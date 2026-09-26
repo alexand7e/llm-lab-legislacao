@@ -42,6 +42,11 @@ Formato baseado em Keep a Changelog.
   de `config/corpus.yaml` e grava `data/processed/articles.jsonl`; se uma
   norma falhar nada é gravado. Imprime o resumo por norma e avisa sobre
   remissões para artigos ausentes.
+- data/processed/articles.jsonl versionado (LGPD, Marco Civil, CDC) e
+  tests/test_corpus.py, que trava a contagem oficial dos artigos originais
+  (65, 32 e 119, sem lacunas) e invariantes do schema.
+- scripts/sample_articles.py: sorteia 20 artigos (semente fixa, priorizando
+  acrescidos, revogados e vetados) para a conferência manual do aceite do M1.
 
 ### Adicionado (M0 — Fundação)
 
