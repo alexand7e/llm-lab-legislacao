@@ -23,7 +23,7 @@ import typer
 
 from lab.llm import BudgetExceededError, LLMClient, LLMConfigError
 from lab.llm.cache import SQLiteCache
-from lab.settings import Settings, load_models_config
+from lab.settings import Settings, load_env, load_models_config
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -90,7 +90,9 @@ def chat(
     cache = None if no_cache else SQLiteCache(settings.lab_cache_dir)
     try:
         models = load_models_config(config or settings.lab_models_config)
-        client = LLMClient(models, cache=cache, max_usd=settings.lab_max_usd_per_run)
+        client = LLMClient(
+            models, cache=cache, max_usd=settings.lab_max_usd_per_run, env=load_env()
+        )
         result = client.chat(role, [{"role": "user", "content": prompt}])
     except (LLMConfigError, BudgetExceededError) as exc:
         typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
