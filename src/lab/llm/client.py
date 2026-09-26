@@ -36,6 +36,7 @@ erros de configuração nomeiam a *variável* ausente, sem expor valores.
 from __future__ import annotations
 
 import os
+import threading
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -129,6 +130,7 @@ class LLMClient:
         self._http_client = http_client
         self._sleep = sleep
         self._sdk: dict[str, OpenAI] = {}
+        self._lock = threading.Lock()  # protege _sdk e total_cost_usd (uso em paralelo)
         self.total_cost_usd = 0.0
 
     # -- internals ---------------------------------------------------------
@@ -170,10 +172,12 @@ class LLMClient:
         raise AssertionError("unreachable")
 
     def _register_cost(self, usage: Usage) -> None:
-        self.total_cost_usd += usage.cost_usd
-        if self.total_cost_usd > self._max_usd:
+        with self._lock:
+            self.total_cost_usd += usage.cost_usd
+            total = self.total_cost_usd
+        if total > self._max_usd:
             raise BudgetExceededError(
-                f"estimated cost ${self.total_cost_usd:.4f} exceeds limit ${self._max_usd:.2f}"
+                f"estimated cost ${total:.4f} exceeds limit ${self._max_usd:.2f}"
             )
 
     # -- public API --------------------------------------------------------
@@ -207,7 +211,8 @@ class LLMClient:
                 text=hit["text"], usage=Usage.model_validate(hit["usage"]), cached=True
             )
 
-        sdk = self._sdk_for(role).with_options(timeout=role.timeout_s)
+        with self._lock:
+            sdk = self._sdk_for(role).with_options(timeout=role.timeout_s)
         kwargs: dict[str, Any] = {"model": role.model, "messages": messages, **params}
         if response_format is not None:
             kwargs["response_format"] = response_format

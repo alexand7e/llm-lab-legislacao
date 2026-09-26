@@ -25,6 +25,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -47,30 +48,35 @@ def make_key(model: str, messages: list[dict[str, Any]], params: dict[str, Any])
 class SQLiteCache:
     """Tabela ``cache(key, value)`` em SQLite; ``value`` é JSON.
 
-    Uma instância por processo (o SQLite não é thread-safe aqui e o
-    cliente usa um único cliente por vez). Crie o diretório se não existir
-    e chame :meth:`close` ao fim do uso.
+    Uma instância por processo, segura para uso por várias threads (o runner
+    de avaliação chama o cliente em paralelo): a conexão é compartilhada e cada
+    operação é serializada por um lock. Crie o diretório se não existir e
+    chame :meth:`close` ao fim do uso.
     """
 
     def __init__(self, directory: Path) -> None:
         directory.mkdir(parents=True, exist_ok=True)
-        self._db = sqlite3.connect(directory / "cache.sqlite")
+        self._lock = threading.Lock()
+        self._db = sqlite3.connect(directory / "cache.sqlite", check_same_thread=False)
         self._db.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, value TEXT)")
         self._db.commit()
 
     def get(self, key: str) -> dict[str, Any] | None:
         """Retornar o valor cacheado para a chave, ou ``None`` se ausente."""
-        row = self._db.execute("SELECT value FROM cache WHERE key = ?", (key,)).fetchone()
+        with self._lock:
+            row = self._db.execute("SELECT value FROM cache WHERE key = ?", (key,)).fetchone()
         return json.loads(row[0]) if row else None
 
     def set(self, key: str, value: dict[str, Any]) -> None:
         """Gravar (ou sobrescrever) o valor para a chave."""
-        self._db.execute(
-            "INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)",
-            (key, json.dumps(value, ensure_ascii=False)),
-        )
-        self._db.commit()
+        with self._lock:
+            self._db.execute(
+                "INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)",
+                (key, json.dumps(value, ensure_ascii=False)),
+            )
+            self._db.commit()
 
     def close(self) -> None:
         """Fechar a conexão com o SQLite."""
-        self._db.close()
+        with self._lock:
+            self._db.close()
