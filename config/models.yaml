@@ -44,10 +44,14 @@
 #   - Ver .env.example para a lista de variáveis.
 
 roles:
-  generator:   { provider: primary,    model: "<model-id>",       price_in: 0.00, price_out: 0.00 }
-  judge:       { provider: primary,    model: "<other-family-id>", price_in: 0.00, price_out: 0.00 }
-  embedding:   { provider: deepinfra,  model: "BAAI/bge-m3",       price_in: 0.00, dims: 1024 }
-  synthesizer: { provider: primary,   model: "<model-id>",        price_in: 0.00, price_out: 0.00 }
+  # Provedor principal (OpenAI-compatible, ver ADR 0001). Preços em 0.00: o
+  # provedor é de uso interno e não cobra por token; se passar a cobrar, preencher.
+  generator:   { provider: primary, model: "soberano-alpha",       price_in: 0.00, price_out: 0.00 }
+  # O juiz deve ser de família diferente do gerador (SPEC 4.2). Confirmar a
+  # linhagem do soberano-alpha antes do M2; se for derivado do Qwen, trocar o juiz.
+  judge:       { provider: primary, model: "Qwen/Qwen3.6-35B-A3B", price_in: 0.00, price_out: 0.00 }
+  embedding:   { provider: primary, model: "BAAI/bge-m3",          price_in: 0.00, dims: 1024 }
+  synthesizer: { provider: primary, model: "Qwen3.8-27B",          price_in: 0.00, price_out: 0.00 }
 
 providers:
   primary:    { base_url_env: PRIMARY_BASE_URL, api_key_env: PRIMARY_API_KEY }  # values live in .env only
