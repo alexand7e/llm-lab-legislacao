@@ -46,6 +46,11 @@ Formato baseado em Keep a Changelog.
   ordem do corpus, artigos em ordem natural) e recusa ids repetidos;
   `read_jsonl` aponta a linha inválida; `dangling_references` alerta sobre
   remissões para artigos do corpus que não existem.
+- `lab ingest` (src/lab/ingest/pipeline.py): coleta o que falta em
+  `data/raw/` (ou tudo, com `--fetch`), confere o hash, parseia as normas
+  de `config/corpus.yaml` e grava `data/processed/articles.jsonl`; se uma
+  norma falhar nada é gravado. Imprime o resumo por norma e avisa sobre
+  remissões para artigos ausentes.
 
 ### Adicionado (M0 — Fundação)
 
