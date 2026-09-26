@@ -38,6 +38,7 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from typing import Any, TypeVar, cast
 
 from openai import (
@@ -48,7 +49,7 @@ from openai import (
     OpenAI,
 )
 from openai.types.chat import ChatCompletion
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from lab.llm.cache import SQLiteCache, make_key
 from lab.llm.costs import Usage, estimate_cost
@@ -71,6 +72,15 @@ class ChatResult(BaseModel):
     usage: Usage
     cached: bool = False
     latency_ms: int = 0
+
+
+@dataclass(frozen=True)
+class Parsed[T: BaseModel]:
+    """Resposta estruturada: ``value`` é ``None`` se não validou (``error`` diz por quê)."""
+
+    value: T | None
+    result: ChatResult
+    error: str | None = None
 
 
 def _is_retryable(exc: Exception) -> bool:
@@ -222,18 +232,18 @@ class LLMClient:
         self._register_cost(usage)
         return ChatResult(text=text, usage=usage, latency_ms=latency_ms)
 
-    def chat_json(
+    def chat_parsed(
         self, role_name: str, messages: list[dict[str, Any]], schema: type[M], **params: Any
-    ) -> M:
-        """Saída estruturada via JSON Schema, com fallback para parsing validado.
+    ) -> Parsed[M]:
+        """Como :meth:`chat_json`, mas sem levantar quando a resposta não valida.
+
+        Devolve sempre o :class:`ChatResult` (texto, tokens, custo, latência),
+        para quem mede o experimento não perder o custo de uma resposta ruim.
 
         :param role_name: nome do papel em models.yaml.
         :param messages: mensagens no formato de chat da API OpenAI.
         :param schema: classe Pydantic que define o schema JSON esperado.
         :param params: parâmetros extras repassados a :meth:`chat`.
-        :return: instância validada do ``schema``.
-        :raises pydantic.ValidationError: a resposta não valida contra o schema
-            (o texto bruto está no contexto do erro).
         """
         response_format = {
             "type": "json_schema",
@@ -247,4 +257,24 @@ class LLMClient:
         start, end = text.find("{"), text.rfind("}")
         if start != -1 and end > start:
             text = text[start : end + 1]
-        return schema.model_validate_json(text)
+        try:
+            return Parsed(value=schema.model_validate_json(text), result=result)
+        except ValidationError as exc:
+            return Parsed(value=None, result=result, error=str(exc.errors()[0]["msg"]))
+
+    def chat_json(
+        self, role_name: str, messages: list[dict[str, Any]], schema: type[M], **params: Any
+    ) -> M:
+        """Saída estruturada via JSON Schema, com fallback para parsing validado.
+
+        :param role_name: nome do papel em models.yaml.
+        :param messages: mensagens no formato de chat da API OpenAI.
+        :param schema: classe Pydantic que define o schema JSON esperado.
+        :param params: parâmetros extras repassados a :meth:`chat`.
+        :return: instância validada do ``schema``.
+        :raises ValueError: a resposta não valida contra o schema.
+        """
+        parsed = self.chat_parsed(role_name, messages, schema, **params)
+        if parsed.value is None:
+            raise ValueError(f"resposta fora do schema {schema.__name__}: {parsed.error}")
+        return parsed.value

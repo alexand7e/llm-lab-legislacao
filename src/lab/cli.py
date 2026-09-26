@@ -28,6 +28,7 @@ from lab.ingest.sources import load_corpus
 from lab.llm import BudgetExceededError, LLMClient, LLMConfigError
 from lab.llm.cache import SQLiteCache
 from lab.settings import Settings, load_env, load_models_config
+from lab.strategies import BaselineStrategy
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -174,6 +175,68 @@ def ingest(
         typer.secho(
             f"aviso: {len(report.dangling)} remissões apontam para artigos ausentes do corpus "
             f"(ex.: {report.dangling[0][0]} -> {report.dangling[0][1]})",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+
+
+@app.command()
+def ask(
+    question: str = typer.Argument(..., help="Pergunta sobre a legislação do corpus."),
+    prompt: str = typer.Option(
+        "baseline_v1", "--prompt", help="Prompt em prompts/ (a versão faz parte do nome)."
+    ),
+    role: str = typer.Option("generator", "--role", "-r", help="Papel de modelo em models.yaml."),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Ignora o cache em disco."),
+    config: Path | None = typer.Option(
+        None, "--config", help="Caminho alternativo de models.yaml."
+    ),
+) -> None:
+    """Fazer uma pergunta à estratégia baseline (o modelo responde de memória).
+
+    Sem recuperação: os artigos citados vêm do que o modelo lembra e podem
+    estar errados. É de propósito: esta é a linha de base que RAG e GraphRAG
+    precisam superar. A resposta vai para o stdout; artigos citados, confiança,
+    tokens e custo vão para o stderr.
+
+    Exemplo:
+
+        lab ask "Qual o prazo de resposta do controlador na LGPD?"
+    """
+    settings = Settings()
+    cache = None if no_cache else SQLiteCache(settings.lab_cache_dir)
+    try:
+        models = load_models_config(config or settings.lab_models_config)
+        corpus = load_corpus(settings.lab_corpus_config)
+        client = LLMClient(
+            models, cache=cache, max_usd=settings.lab_max_usd_per_run, env=load_env()
+        )
+        strategy = BaselineStrategy(client, corpus.laws, prompt=prompt, role=role)
+        answer = strategy.answer(question)
+    except FileNotFoundError as exc:
+        typer.secho(f"error: arquivo não encontrado: {exc.filename or exc}", fg="red", err=True)
+        raise typer.Exit(code=1) from exc
+    except (LLMConfigError, BudgetExceededError) as exc:
+        typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        if cache is not None:
+            cache.close()
+
+    typer.echo(answer.text)
+    cited = ", ".join(answer.cited_articles) or "nenhum"
+    confidence = "" if answer.confidence is None else f" confiança={answer.confidence:.2f}"
+    origin = f"{answer.latency_ms} ms" if answer.latency_ms else "cache"
+    u = answer.usage
+    typer.secho(
+        f"[{strategy.name}] artigos citados: {cited}{confidence}\n"
+        f"in={u.prompt_tokens} out={u.completion_tokens} cost=${u.cost_usd:.6f} ({origin})",
+        fg=typer.colors.BRIGHT_BLACK,
+        err=True,
+    )
+    if answer.parse_error:
+        typer.secho(
+            f"aviso: resposta fora do schema ({answer.parse_error})",
             fg=typer.colors.YELLOW,
             err=True,
         )
