@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from lab.settings import Provider, Settings, load_models_config
+from lab.settings import Provider, Settings, load_env, load_models_config
 
 REPO_MODELS = Path(__file__).resolve().parents[1] / "config" / "models.yaml"
 
@@ -73,3 +73,20 @@ def test_invalid_role_is_rejected(tmp_path):
     )
     with pytest.raises(ValidationError, match="timeout_s"):
         load_models_config(path)
+
+
+def test_load_env_merges_dotenv_with_environment_taking_precedence(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("FROM_FILE=file\nBOTH=file\nEMPTY=\n", encoding="utf-8")
+    monkeypatch.delenv("FROM_FILE", raising=False)
+    monkeypatch.delenv("EMPTY", raising=False)
+    monkeypatch.setenv("BOTH", "env")
+    env = load_env(env_file)
+    assert env["FROM_FILE"] == "file"
+    assert env["BOTH"] == "env"
+    assert "EMPTY" not in env
+
+
+def test_load_env_without_dotenv_file_is_just_the_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv("ONLY_ENV", "1")
+    assert load_env(tmp_path / "missing.env")["ONLY_ENV"] == "1"

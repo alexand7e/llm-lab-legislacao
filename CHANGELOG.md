@@ -8,6 +8,15 @@ Formato baseado em Keep a Changelog.
 
 ## Unreleased
 
+### Corrigido (M0 — Fundação)
+
+- As chaves e URLs dos provedores no `.env` não chegavam ao cliente (só o
+  ambiente do sistema era lido); `lab.settings.load_env` junta o `.env` com
+  o ambiente, que tem precedência.
+- `config/models.yaml` com os modelos reais do provedor principal
+  (generator, judge, embedding e synthesizer); aceite do M0 verificado:
+  `lab chat --role generator "olá"` responde e mostra tokens e custo.
+
 ### Adicionado (M1 — Corpus)
 
 - config/corpus.yaml + src/lab/ingest/sources.py: normas do corpus como
