@@ -10,6 +10,11 @@ Formato baseado em Keep a Changelog.
 
 ### Adicionado (M3 — Baseline de prompting)
 
+- Estratégia `long_context` (`src/lab/strategies/long_context.py`,
+  `prompts/long_context_v1.md`): o texto oficial vigente das três normas
+  (~42 mil tokens) vai inteiro no prompt, cada artigo precedido do id de citação.
+  Todas as normas sempre, sem escolher pela pergunta. `lab eval`/`lab ask
+  --strategy long_context` usam o `articles.jsonl`.
 - `--strategy` em `lab eval` e `lab ask` (`src/lab/strategies/factory.py`): cada
   estratégia tem um prompt padrão versionado; `--prompt` o substitui e a versão
   usada fica no `config.yaml` da run.
