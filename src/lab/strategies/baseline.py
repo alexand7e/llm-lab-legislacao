@@ -33,6 +33,7 @@ from lab.strategies.base import (
     StreamItem,
     load_prompt,
     normalize_citations,
+    salvage_fields,
 )
 from lab.strategies.streaming import AnswerExtractor
 
@@ -93,10 +94,17 @@ class BaselineStrategy:
     def _build_answer(
         self, value: BaselineOutput | None, error: str | None, result: ChatResult
     ) -> Answer:
-        """Answer a partir da saída validada; sem ela, o texto bruto vira a resposta."""
+        """Answer a partir da saída validada.
+
+        Sem ela (modelo ignorou o formato), recupera citações e confiança das
+        linhas rotuladas do texto livre; ``parse_error`` continua registrado.
+        """
         if value is None:
+            text, cited, confidence = salvage_fields(result.text, self._law_ids)
             return Answer(
-                text=result.text.strip(),
+                text=text or result.text.strip(),
+                cited_articles=cited,
+                confidence=confidence,
                 usage=result.usage,
                 latency_ms=result.latency_ms,
                 parse_error=error,

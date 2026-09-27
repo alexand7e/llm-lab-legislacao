@@ -10,6 +10,10 @@ Formato baseado em Keep a Changelog.
 
 ### Corrigido (M2 — Avaliação)
 
+- Quando o modelo ignora o formato JSON e escreve os campos no fim do texto
+  (`cited_articles`: [...], `confidence`: ...), `salvage_fields` recupera as
+  citações e a confiança das linhas rotuladas; `parse_error` continua registrado.
+  Antes, respostas certas perdiam as citações.
 - `is_abstention` reconhece recusas que citam o texto ou as normas ("o texto
   fornecido não contém informações", "não pode ser respondida com as normas",
   "fora das normas"). Antes, o Qwen3.8-27B se abstinha corretamente e a métrica
