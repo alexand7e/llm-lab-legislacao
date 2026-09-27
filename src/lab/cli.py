@@ -24,6 +24,7 @@ import httpx2
 import typer
 
 from lab.eval.dataset import DatasetError, check_against_corpus, distribution_gaps, load_questions
+from lab.eval.judge import Judge, JudgeError, check_judge_independence
 from lab.eval.registry import (
     RunConfig,
     RunMeta,
@@ -276,14 +277,21 @@ def eval_command(
     config: Path | None = typer.Option(
         None, "--config", help="Caminho alternativo de models.yaml."
     ),
+    judge: bool = typer.Option(
+        True, "--judge/--no-judge", help="Nota de correção pelo juiz LLM (papel judge)."
+    ),
+    judge_prompt: str = typer.Option(
+        "judge_v1", "--judge-prompt", help="Rubrica do juiz em prompts/."
+    ),
 ) -> None:
     """Avaliar a estratégia baseline no conjunto de perguntas e registrar a run.
 
     Valida as perguntas contra o corpus, responde todas (em paralelo, com
     cache e limite de custo LAB_MAX_USD_PER_RUN), calcula as métricas
-    determinísticas e grava results/<AAAAMMDD-HHMM>-baseline/ com config,
-    metadados, respostas e métricas. Uma run só é oficial (meta.json) se
-    veio de commit limpo, sem erros e sem perguntas de rascunho.
+    determinísticas e a nota do juiz (desligue com --no-judge) e grava
+    results/<AAAAMMDD-HHMM>-baseline/ com config, metadados, respostas e
+    métricas. Uma run só é oficial (meta.json) se veio de commit limpo, sem
+    erros (da estratégia ou do juiz) e sem perguntas de rascunho.
 
     Exemplo:
 
@@ -305,6 +313,10 @@ def eval_command(
             models, cache=cache, max_usd=settings.lab_max_usd_per_run, env=load_env()
         )
         strategy = BaselineStrategy(client, corpus.laws, prompt=prompt, role=role)
+        grader = None
+        if judge:
+            check_judge_independence(models, judge_role="judge", generator_role=role)
+            grader = Judge(client, prompt=judge_prompt)
 
         done = 0
 
@@ -315,7 +327,7 @@ def eval_command(
             typer.secho(f"[{done}/{len(questions)}] {result.question_id} {mark}", err=True)
 
         started = datetime.now()
-        results = run_eval(strategy, questions, workers=workers, on_result=progress)
+        results = run_eval(strategy, questions, workers=workers, judge=grader, on_result=progress)
         finished = datetime.now()
         run_config = RunConfig(
             strategy=strategy.name,
@@ -327,6 +339,8 @@ def eval_command(
             workers=workers,
             max_usd=settings.lab_max_usd_per_run,
             use_cache=cache is not None,
+            judge_model=models.roles["judge"].model if grader else None,
+            judge_prompt=judge_prompt if grader else None,
         )
         run_dir = write_run(
             out,
@@ -340,7 +354,7 @@ def eval_command(
     except FileNotFoundError as exc:
         typer.secho(f"error: arquivo não encontrado: {exc.filename or exc}", fg="red", err=True)
         raise typer.Exit(code=1) from exc
-    except (DatasetError, CorpusError, LLMConfigError, BudgetExceededError) as exc:
+    except (DatasetError, CorpusError, LLMConfigError, BudgetExceededError, JudgeError) as exc:
         typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
     finally:
@@ -349,14 +363,20 @@ def eval_command(
 
     metrics = RunMetrics.model_validate_json((run_dir / "metrics.json").read_text(encoding="utf-8"))
     meta = RunMeta.model_validate_json((run_dir / "meta.json").read_text(encoding="utf-8"))
-    typer.echo(f"{'categoria':<14}{'n':>3}  {'cita gab.':>9}  {'abst. ok':>8}  {'recusa ind.':>11}")
+    columns = (
+        ("correctness", "correção"),
+        ("citation_hit", "cita gab."),
+        ("abstention_correct", "abst. ok"),
+        ("wrongful_refusal", "recusa ind."),
+    )
+    typer.echo(f"{'categoria':<14}{'n':>3}" + "".join(f"  {label:>11}" for _, label in columns))
     for name, agg in {"TOTAL": metrics.overall, **metrics.by_category}.items():
-        cells = [
-            "-" if agg.means.get(k) is None else f"{agg.means[k]:.2f}"
-            for k in ("citation_hit", "abstention_correct", "wrongful_refusal")
-        ]
-        typer.echo(f"{name:<14}{agg.n:>3}  {cells[0]:>9}  {cells[1]:>8}  {cells[2]:>11}")
-    typer.echo(f"custo estimado ${meta.total_cost_usd:.6f}; erros: {meta.errors}; run: {run_dir}")
+        cells = ["-" if agg.means.get(k) is None else f"{agg.means[k]:.2f}" for k, _ in columns]
+        typer.echo(f"{name:<14}{agg.n:>3}" + "".join(f"  {c:>11}" for c in cells))
+    typer.echo(
+        f"custo estimado ${meta.total_cost_usd:.6f} (juiz ${meta.judge_cost_usd:.6f}); "
+        f"erros: {meta.errors}; falhas do juiz: {meta.judge_errors}; run: {run_dir}"
+    )
     if meta.dev_questions:
         typer.secho(
             "aviso: perguntas de rascunho (dev_draft); run não oficial", fg="yellow", err=True

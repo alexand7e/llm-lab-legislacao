@@ -21,6 +21,13 @@ Formato baseado em Keep a Changelog.
 
 ### Adicionado (M2 — Avaliação)
 
+- Juiz LLM (`src/lab/eval/judge.py`) com a rubrica versionada `prompts/judge_v1.md`
+  (0 errada, 1 parcial, 2 correta; em `sem_resposta`, 2 só se se absteve). Vira a
+  métrica `correctness` (nota/2); `lab eval` usa o juiz por padrão (`--no-judge`
+  desliga) e recusa juiz e gerador com o mesmo modelo (SPEC 4.2). Falha do juiz
+  numa pergunta não derruba a run: fica registrada e torna a run não oficial.
+  Custo do juiz vai à parte em `meta.json` (`judge_cost_usd`); modelo e rubrica
+  ficam no `config.yaml`.
 - src/lab/eval/dataset.py: schema `Question` (SPEC 7.1) e `load_questions`,
   que recusa id repetido, gabarito incoerente com a categoria e linha inválida
   (a mensagem traz arquivo, linha e campo); `check_against_corpus` confere que

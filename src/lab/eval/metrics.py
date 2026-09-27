@@ -102,6 +102,7 @@ class Scores(BaseModel):
     abstained: float
     abstention_correct: float | None = None  # só em sem_resposta
     wrongful_refusal: float | None = None  # só nas demais
+    correctness: float | None = None  # nota do juiz / 2; None sem juiz ou se ele falhou
 
 
 def score(answer: Answer, question: Question) -> Scores:

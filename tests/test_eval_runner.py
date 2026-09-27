@@ -19,6 +19,7 @@ from typer.testing import CliRunner
 import lab.cli
 from lab.cli import app
 from lab.eval.dataset import Question
+from lab.eval.judge import JudgeOutput
 from lab.eval.registry import (
     GitState,
     RunConfig,
@@ -250,11 +251,17 @@ class FakeClient:
     def __init__(self, config, *, cache=None, max_usd=0.0, env=None) -> None:
         pass
 
+    calls: list[str] = []
+
     def chat_parsed(self, role, messages, schema, **params):
+        FakeClient.calls.append(role)
+        usage = Usage(prompt_tokens=10, completion_tokens=5, cost_usd=0.001)
+        if schema is JudgeOutput:
+            verdict = JudgeOutput(score=2, rationale="Coincide com a referência.")
+            return Parsed(value=verdict, result=ChatResult(text="{}", usage=usage, latency_ms=5))
         question = messages[-1]["content"]
         cited = ["lgpd:art:19"] if "confirmação" in question else ["lgpd:art:1"]
         value = BaselineOutput(answer="Resposta.", cited_articles=cited, confidence=0.5)
-        usage = Usage(prompt_tokens=10, completion_tokens=5, cost_usd=0.001)
         return Parsed(value=value, result=ChatResult(text="{}", usage=usage, latency_ms=10))
 
 
@@ -266,6 +273,8 @@ def cli_env(tmp_path, monkeypatch):
     monkeypatch.setenv("LAB_CORPUS_CONFIG", str(ROOT / "config" / "corpus.yaml"))
     (tmp_path / "prompts").mkdir()
     (tmp_path / "prompts" / "baseline_v1.md").write_text("Normas:\n{laws}\n", encoding="utf-8")
+    (tmp_path / "prompts" / "judge_v1.md").write_text("Rubrica.", encoding="utf-8")
+    monkeypatch.setattr(FakeClient, "calls", [])
     monkeypatch.setattr(lab.cli, "LLMClient", FakeClient)
     return tmp_path
 
@@ -289,6 +298,31 @@ def test_eval_command_writes_run_and_prints_table(cli_env: Path):
     meta = RunMeta.model_validate_json((run_dir / "meta.json").read_text("utf-8"))
     assert meta.questions == 16 and meta.errors == 0 and not meta.official
     assert len((run_dir / "answers.jsonl").read_text("utf-8").splitlines()) == 16
+    # juiz ligado por padrão: uma chamada ao papel judge por pergunta, custo contado à parte
+    assert FakeClient.calls.count("judge") == 16 and FakeClient.calls.count("generator") == 16
+    assert meta.judge_cost_usd == pytest.approx(0.016)
+    assert meta.total_cost_usd == pytest.approx(0.032)
+    assert "correção" in result.stdout
+    metrics = RunMetrics.model_validate_json((run_dir / "metrics.json").read_text("utf-8"))
+    assert metrics.overall.means["correctness"] == 1.0
+    config = yaml.safe_load((run_dir / "config.yaml").read_text("utf-8"))
+    assert config["judge_model"] and config["judge_prompt"] == "judge_v1"
+
+
+def test_eval_command_without_judge(cli_env: Path):
+    result = runner.invoke(app, [*ARGS, "--no-judge", "--limit", "2"])
+    assert result.exit_code == 0, result.output
+    assert "judge" not in FakeClient.calls
+    (run_dir,) = list((cli_env / "results").iterdir())
+    metrics = RunMetrics.model_validate_json((run_dir / "metrics.json").read_text("utf-8"))
+    assert "correctness" not in metrics.overall.means
+    assert yaml.safe_load((run_dir / "config.yaml").read_text("utf-8"))["judge_model"] is None
+
+
+def test_eval_command_refuses_judge_equal_to_generator(cli_env: Path):
+    result = runner.invoke(app, [*ARGS, "--role", "judge", "--limit", "1"])
+    assert result.exit_code == 1
+    assert "mesmo modelo" in result.stderr
 
 
 def test_eval_command_limit(cli_env: Path):
