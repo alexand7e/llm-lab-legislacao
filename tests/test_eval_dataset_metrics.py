@@ -183,10 +183,27 @@ def test_retrieval_metrics():
         "Desculpe, mas não posso responder a essa pergunta.",
         "Essa informação não consta nas normas indicadas.",
         "Isso está fora do escopo das normas.",
+        # recusas reais do Qwen3.8-27B que a heurística não reconhecia (#100)
+        "O texto fornecido não contém informações sobre a alíquota do imposto de renda.",
+        "A pergunta não pode ser respondida com as normas fornecidas (LGPD, Marco Civil e CDC).",
+        "Essa matéria está fora das normas consultadas.",
+        "As normas listadas (LGPD, Marco Civil e CDC) não tratam de direito do trabalho.",
     ],
 )
 def test_abstention_by_text(text: str):
     assert is_abstention(answer(text=text))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "O contrato não contém cláusula abusiva, então é válido.",  # "não contém" sem "informação"
+        "A resposta pode ser respondida por escrito em até 15 dias.",
+        "O consumidor pode desistir em 7 dias, conforme as normas fornecidas.",
+    ],
+)
+def test_answers_are_not_mistaken_for_abstention(text: str):
+    assert not is_abstention(answer(text=text, cited_articles=["cdc:art:49"], confidence=0.9))
 
 
 def test_abstention_by_low_confidence_without_citation():

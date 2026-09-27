@@ -36,7 +36,13 @@ _ABSTENTION = re.compile(
     r"|h[áa]\s+(?:previs[ãa]o|informa)|consta|encontr(?:ei|o)|est[áa]\s+(?:prevista|dispon)"
     r"|[ée]\s+poss[íi]vel\s+(?:responder|informar|determinar))"
     r"|fora\s+d[oa]\s+(?:escopo|corpus|[âa]mbito)|desculp|sem\s+informa[çc][õo]es\s+suficientes"
-    r"|n[ãa]o\s+(?:disp[õo]e|disponho)",
+    r"|n[ãa]o\s+(?:disp[õo]e|disponho)"
+    # recusas que citam as normas ou o texto consultado ("o texto fornecido não contém
+    # informações sobre...", "a pergunta não pode ser respondida com as normas...")
+    r"|n[ãa]o\s+cont[ée]m\s+informa[çc]"
+    r"|n[ãa]o\s+pode\s+ser\s+respondid[ao]"
+    r"|fora\s+d[ao]s\s+(?:normas|leis)"
+    r"|(?:normas|leis)\s+(?:fornecidas|listadas|consultadas)[^.]{0,80}?n[ãa]o\s+(?:tratam|abordam|regulam)",
     re.IGNORECASE,
 )
 _LOW_CONFIDENCE = 0.2
