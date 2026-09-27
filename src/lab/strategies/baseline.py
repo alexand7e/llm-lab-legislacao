@@ -55,6 +55,7 @@ class BaselineStrategy:
     :param laws: normas do corpus, listadas no prompt e usadas para validar citações.
     :param prompt: nome do prompt em ``prompts/`` (a versão faz parte do nome).
     :param role: papel de modelo em ``models.yaml``.
+    :param name: nome registrado nas runs (``fewshot`` usa esta classe com outro prompt).
     :param max_tokens: teto de tokens da resposta; modelos com raciocínio gastam
         boa parte dele pensando, então o padrão é generoso.
     """
@@ -70,7 +71,9 @@ class BaselineStrategy:
         role: str = "generator",
         max_tokens: int = 4000,
         prompts_dir: Path = Path("prompts"),
+        name: str = "baseline",
     ) -> None:
+        self.name = name
         self._client = client
         self._law_ids = [law.id for law in laws]
         self._role = role

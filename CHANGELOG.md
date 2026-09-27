@@ -8,6 +8,15 @@ Formato baseado em Keep a Changelog.
 
 ## Unreleased
 
+### Adicionado (M3 — Baseline de prompting)
+
+- `--strategy` em `lab eval` e `lab ask` (`src/lab/strategies/factory.py`): cada
+  estratégia tem um prompt padrão versionado; `--prompt` o substitui e a versão
+  usada fica no `config.yaml` da run.
+- Estratégia `fewshot` com `prompts/fewshot_v1.md`: quatro exemplos no formato
+  JSON esperado, um deles de abstenção. Um teste garante que nenhum exemplo
+  repete pergunta ou artigo de gabarito dos conjuntos de avaliação.
+
 ### Adicionado (núcleo: streaming e conversa)
 
 - `Strategy.answer(question, history=())`: mensagens anteriores da conversa como
