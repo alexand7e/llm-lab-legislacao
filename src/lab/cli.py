@@ -48,7 +48,7 @@ from lab.ingest.sources import load_corpus
 from lab.llm import BudgetExceededError, LLMClient, LLMConfigError
 from lab.llm.cache import SQLiteCache
 from lab.settings import Settings, load_env, load_models_config
-from lab.strategies import BaselineStrategy
+from lab.strategies.factory import UnknownStrategyError, build_strategy, default_prompt
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -203,8 +203,11 @@ def ingest(
 @app.command()
 def ask(
     question: str = typer.Argument(..., help="Pergunta sobre a legislação do corpus."),
-    prompt: str = typer.Option(
-        "baseline_v1", "--prompt", help="Prompt em prompts/ (a versão faz parte do nome)."
+    strategy_name: str = typer.Option(
+        "baseline", "--strategy", "-s", help="Estratégia: baseline ou fewshot."
+    ),
+    prompt: str | None = typer.Option(
+        None, "--prompt", help="Prompt em prompts/ (padrão: o da estratégia)."
     ),
     role: str = typer.Option("generator", "--role", "-r", help="Papel de modelo em models.yaml."),
     no_cache: bool = typer.Option(False, "--no-cache", help="Ignora o cache em disco."),
@@ -231,12 +234,12 @@ def ask(
         client = LLMClient(
             models, cache=cache, max_usd=settings.lab_max_usd_per_run, env=load_env()
         )
-        strategy = BaselineStrategy(client, corpus.laws, prompt=prompt, role=role)
+        strategy = build_strategy(strategy_name, client, corpus.laws, prompt=prompt, role=role)
         answer = strategy.answer(question)
     except FileNotFoundError as exc:
         typer.secho(f"error: arquivo não encontrado: {exc.filename or exc}", fg="red", err=True)
         raise typer.Exit(code=1) from exc
-    except (LLMConfigError, BudgetExceededError) as exc:
+    except (LLMConfigError, BudgetExceededError, UnknownStrategyError) as exc:
         typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
     finally:
@@ -276,7 +279,12 @@ def eval_command(
         "--articles",
         help="Corpus, para conferir o gabarito das perguntas antes de gastar.",
     ),
-    prompt: str = typer.Option("baseline_v1", "--prompt", help="Prompt em prompts/."),
+    strategy_name: str = typer.Option(
+        "baseline", "--strategy", "-s", help="Estratégia: baseline ou fewshot."
+    ),
+    prompt: str | None = typer.Option(
+        None, "--prompt", help="Prompt em prompts/ (padrão: o da estratégia)."
+    ),
     role: str = typer.Option("generator", "--role", "-r", help="Papel de modelo em models.yaml."),
     limit: int | None = typer.Option(None, "--limit", "-n", help="Só as N primeiras perguntas."),
     workers: int = typer.Option(4, "--workers", "-w", min=1, help="Perguntas em paralelo."),
@@ -292,12 +300,12 @@ def eval_command(
         "judge_v1", "--judge-prompt", help="Rubrica do juiz em prompts/."
     ),
 ) -> None:
-    """Avaliar a estratégia baseline no conjunto de perguntas e registrar a run.
+    """Avaliar uma estratégia (--strategy) no conjunto de perguntas e registrar a run.
 
     Valida as perguntas contra o corpus, responde todas (em paralelo, com
     cache e limite de custo LAB_MAX_USD_PER_RUN), calcula as métricas
     determinísticas e a nota do juiz (desligue com --no-judge) e grava
-    results/<AAAAMMDD-HHMM>-baseline/ com config, metadados, respostas e
+    results/<AAAAMMDD-HHMM>-<estratégia>/ com config, metadados, respostas e
     métricas. Uma run só é oficial (meta.json) se veio de commit limpo, sem
     erros (da estratégia ou do juiz) e sem perguntas de rascunho.
 
@@ -320,7 +328,7 @@ def eval_command(
         client = LLMClient(
             models, cache=cache, max_usd=settings.lab_max_usd_per_run, env=load_env()
         )
-        strategy = BaselineStrategy(client, corpus.laws, prompt=prompt, role=role)
+        strategy = build_strategy(strategy_name, client, corpus.laws, prompt=prompt, role=role)
         grader = None
         if judge:
             check_judge_independence(models, judge_role="judge", generator_role=role)
@@ -339,7 +347,7 @@ def eval_command(
         finished = datetime.now()
         run_config = RunConfig(
             strategy=strategy.name,
-            prompt=prompt,
+            prompt=prompt or default_prompt(strategy_name),
             roles={role: models.roles[role].model},
             questions_file=str(questions_file),
             questions_sha256=sha256_file(questions_file),
@@ -362,7 +370,14 @@ def eval_command(
     except FileNotFoundError as exc:
         typer.secho(f"error: arquivo não encontrado: {exc.filename or exc}", fg="red", err=True)
         raise typer.Exit(code=1) from exc
-    except (DatasetError, CorpusError, LLMConfigError, BudgetExceededError, JudgeError) as exc:
+    except (
+        DatasetError,
+        CorpusError,
+        LLMConfigError,
+        BudgetExceededError,
+        JudgeError,
+        UnknownStrategyError,
+    ) as exc:
         typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
     finally:
