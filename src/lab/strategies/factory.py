@@ -17,14 +17,17 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
+from lab.ingest.export import ArticleRecord
 from lab.ingest.sources import LawSource
 from lab.llm.client import LLMClient
 from lab.strategies.baseline import BaselineStrategy
+from lab.strategies.long_context import LongContextStrategy
 
 # nome -> prompt padrão
 STRATEGIES: dict[str, str] = {
     "baseline": "baseline_v1",
     "fewshot": "fewshot_v1",
+    "long_context": "long_context_v1",
 }
 
 
@@ -52,14 +55,23 @@ def build_strategy(
     prompt: str | None = None,
     role: str = "generator",
     prompts_dir: Path = Path("prompts"),
+    records: Sequence[ArticleRecord] | None = None,
 ) -> BaselineStrategy:
     """Montar a estratégia ``name``.
 
     :raises UnknownStrategyError: estratégia desconhecida.
+    :param records: artigos do corpus; obrigatório para ``long_context``.
     :raises FileNotFoundError: prompt inexistente.
+    :raises ValueError: ``long_context`` sem ``records``.
     """
     chosen = prompt or default_prompt(name)
     default_prompt(name)  # valida o nome mesmo com prompt explícito
+    if name == "long_context":
+        if records is None:
+            raise ValueError("long_context precisa do corpus (articles.jsonl; rode lab ingest)")
+        return LongContextStrategy(
+            client, laws, records, prompt=chosen, role=role, prompts_dir=prompts_dir
+        )
     return BaselineStrategy(
         client, laws, prompt=chosen, role=role, prompts_dir=prompts_dir, name=name
     )

@@ -204,7 +204,7 @@ def ingest(
 def ask(
     question: str = typer.Argument(..., help="Pergunta sobre a legislação do corpus."),
     strategy_name: str = typer.Option(
-        "baseline", "--strategy", "-s", help="Estratégia: baseline ou fewshot."
+        "baseline", "--strategy", "-s", help="Estratégia: baseline, fewshot ou long_context."
     ),
     prompt: str | None = typer.Option(
         None, "--prompt", help="Prompt em prompts/ (padrão: o da estratégia)."
@@ -234,7 +234,14 @@ def ask(
         client = LLMClient(
             models, cache=cache, max_usd=settings.lab_max_usd_per_run, env=load_env()
         )
-        strategy = build_strategy(strategy_name, client, corpus.laws, prompt=prompt, role=role)
+        records = (
+            read_jsonl(Path("data/processed/articles.jsonl"))
+            if strategy_name == "long_context"
+            else None
+        )
+        strategy = build_strategy(
+            strategy_name, client, corpus.laws, prompt=prompt, role=role, records=records
+        )
         answer = strategy.answer(question)
     except FileNotFoundError as exc:
         typer.secho(f"error: arquivo não encontrado: {exc.filename or exc}", fg="red", err=True)
@@ -280,7 +287,7 @@ def eval_command(
         help="Corpus, para conferir o gabarito das perguntas antes de gastar.",
     ),
     strategy_name: str = typer.Option(
-        "baseline", "--strategy", "-s", help="Estratégia: baseline ou fewshot."
+        "baseline", "--strategy", "-s", help="Estratégia: baseline, fewshot ou long_context."
     ),
     prompt: str | None = typer.Option(
         None, "--prompt", help="Prompt em prompts/ (padrão: o da estratégia)."
@@ -317,8 +324,9 @@ def eval_command(
     cache = None if no_cache else SQLiteCache(settings.lab_cache_dir)
     try:
         questions = load_questions(questions_file)
-        if articles.exists():
-            check_against_corpus(questions, read_jsonl(articles))
+        records = read_jsonl(articles) if articles.exists() else None
+        if records is not None:
+            check_against_corpus(questions, records)
         else:
             typer.secho(f"aviso: {articles} não existe; gabarito não conferido", err=True)
         if limit is not None:
@@ -328,7 +336,9 @@ def eval_command(
         client = LLMClient(
             models, cache=cache, max_usd=settings.lab_max_usd_per_run, env=load_env()
         )
-        strategy = build_strategy(strategy_name, client, corpus.laws, prompt=prompt, role=role)
+        strategy = build_strategy(
+            strategy_name, client, corpus.laws, prompt=prompt, role=role, records=records
+        )
         grader = None
         if judge:
             check_judge_independence(models, judge_role="judge", generator_role=role)
