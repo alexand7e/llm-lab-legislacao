@@ -21,6 +21,11 @@ Formato baseado em Keep a Changelog.
 
 ### Adicionado (M2 — Avaliação)
 
+- `lab compare <run1> <run2> ...` (`src/lab/eval/compare.py`): tabela por
+  categoria com a diferença de cada run contra a primeira (correção, citação,
+  recall@5, MRR, abstenção, custo, latência p50/p95); `--markdown` para o corpo
+  dos PRs de experimento. Avisa quando o conjunto de perguntas ou o juiz diferem
+  e quando alguma run não é oficial.
 - Validação do juiz (`src/lab/eval/annotation.py`, `scripts/judge_annotation.py`):
   `export` sorteia 20 respostas de uma run (semente fixa, proporcional às
   categorias) para anotação **cega** (sem a nota do juiz); `agreement` cruza as

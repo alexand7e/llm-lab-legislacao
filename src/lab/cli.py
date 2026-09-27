@@ -23,6 +23,14 @@ from pathlib import Path
 import httpx2
 import typer
 
+from lab.eval.compare import (
+    CompareError,
+    build_rows,
+    compatibility_warnings,
+    load_run,
+    render_markdown,
+    render_text,
+)
 from lab.eval.dataset import DatasetError, check_against_corpus, distribution_gaps, load_questions
 from lab.eval.judge import Judge, JudgeError, check_judge_independence
 from lab.eval.registry import (
@@ -388,3 +396,28 @@ def eval_command(
     gaps = {k: v for k, v in distribution_gaps(questions).items() if v > 0}
     if gaps and not meta.dev_questions:
         typer.secho(f"aviso: conjunto fora da distribuição oficial (faltam: {gaps})", err=True)
+
+
+@app.command()
+def compare(
+    runs: list[Path] = typer.Argument(..., help="Pastas de runs (results/<...>); a 1ª é a base."),
+    markdown: bool = typer.Option(False, "--markdown", help="Tabela em Markdown (para PRs)."),
+) -> None:
+    """Comparar runs lado a lado, por categoria, com a diferença contra a primeira.
+
+    Avisa quando a régua difere (conjunto de perguntas, juiz) ou quando alguma
+    run não é oficial; os avisos vão para o stderr e a tabela para o stdout.
+
+    Exemplo:
+
+        lab compare results/20260927-1239-baseline results/20260927-1400-fewshot
+    """
+    try:
+        loaded = [load_run(path) for path in runs]
+    except CompareError as exc:
+        typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    rows = build_rows(loaded)
+    typer.echo(render_markdown(loaded, rows) if markdown else render_text(loaded, rows))
+    for warning in compatibility_warnings(loaded):
+        typer.secho(f"aviso: {warning}", fg=typer.colors.YELLOW, err=True)
