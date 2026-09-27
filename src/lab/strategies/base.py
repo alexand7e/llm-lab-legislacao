@@ -122,6 +122,47 @@ def normalize_citations(raw: Iterable[str], laws: Collection[str]) -> list[str]:
     return list(seen)
 
 
+_FIELD_LINE = re.compile(
+    r"^\s*[-*>]*\s*[`*_\"']*(?P<field>answer|cited_articles|confidence)[`*_\"']*"
+    r"\s*[:=]\s*(?P<value>.*)$",
+    re.IGNORECASE,
+)
+_ARTICLE_ID = re.compile(
+    r"[a-z0-9_]+\s*:\s*art\s*:\s*\d+[º°o]?(?:\s*-\s*[a-z]{1,3})?", re.IGNORECASE
+)
+_NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
+
+
+def salvage_fields(text: str, laws: Collection[str]) -> tuple[str, list[str], float | None]:
+    """Recuperar resposta, citações e confiança de uma saída fora do formato JSON.
+
+    Alguns modelos ignoram o ``response_format`` e escrevem os campos no fim do
+    texto (``cited_articles: ["cdc:art:26"]``). Só linhas rotuladas com o nome do
+    campo contam: um artigo mencionado no meio da resposta não vira citação.
+
+    :return: ``(texto sem as linhas de campo, citações normalizadas, confiança)``.
+    """
+    kept: list[str] = []
+    cited: list[str] = []
+    confidence: float | None = None
+    for line in text.splitlines():
+        m = _FIELD_LINE.match(line)
+        if m is None:
+            kept.append(line)
+            continue
+        field, value = m["field"].lower(), m["value"]
+        if field == "cited_articles":
+            cited += _ARTICLE_ID.findall(value)
+        elif field == "confidence":
+            number = _NUMBER.search(value)
+            if number:
+                confidence = min(1.0, max(0.0, float(number.group().replace(",", "."))))
+        else:  # "answer: ..." — o rótulo sai, o conteúdo fica
+            kept.append(value.strip().strip('"'))
+    clean = "\n".join(kept).strip()
+    return clean, normalize_citations(cited, laws), confidence
+
+
 def load_prompt(name: str, prompts_dir: Path = Path("prompts")) -> str:
     """Ler ``prompts/<name>.md``. O nome carrega a versão (``baseline_v1``).
 
@@ -139,4 +180,5 @@ __all__ = [
     "StreamingStrategy",
     "load_prompt",
     "normalize_citations",
+    "salvage_fields",
 ]
