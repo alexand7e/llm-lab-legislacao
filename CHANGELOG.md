@@ -21,6 +21,11 @@ Formato baseado em Keep a Changelog.
 
 ### Adicionado (M2 — Avaliação)
 
+- Validação do juiz (`src/lab/eval/annotation.py`, `scripts/judge_annotation.py`):
+  `export` sorteia 20 respostas de uma run (semente fixa, proporcional às
+  categorias) para anotação **cega** (sem a nota do juiz); `agreement` cruza as
+  notas humanas com as do juiz e mostra concordância exata, ±1, matriz de
+  confusão e divergências. Aceite do M2: concordância exata ≥ 80%.
 - Juiz LLM (`src/lab/eval/judge.py`) com a rubrica versionada `prompts/judge_v1.md`
   (0 errada, 1 parcial, 2 correta; em `sem_resposta`, 2 só se se absteve). Vira a
   métrica `correctness` (nota/2); `lab eval` usa o juiz por padrão (`--no-judge`
