@@ -8,6 +8,14 @@ Formato baseado em Keep a Changelog.
 
 ## Unreleased
 
+### Corrigido (M2 — Avaliação)
+
+- `is_abstention` reconhece recusas que citam o texto ou as normas ("o texto
+  fornecido não contém informações", "não pode ser respondida com as normas",
+  "fora das normas"). Antes, o Qwen3.8-27B se abstinha corretamente e a métrica
+  de abstenção dava 0. Padrões restritos para não marcar respostas comuns
+  ("o contrato não contém cláusula...").
+
 ### Adicionado (M3 — Baseline de prompting)
 
 - Estratégia `long_context` (`src/lab/strategies/long_context.py`,
