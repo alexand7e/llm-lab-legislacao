@@ -73,6 +73,24 @@ Formato baseado em Keep a Changelog.
   `answer` de um JSON ainda incompleto (escapes e pares substitutos cortados em
   qualquer ponto); helpers `json_schema_format` e `parse_structured`.
 
+### Adicionado (interface local)
+
+- `lab serve`: interface web local (FastAPI + uvicorn) com chat sobre o baseline.
+  Só escuta no localhost; `--host` fora dele exige `--allow-remote`.
+- `POST /api/chat` responde em SSE no protocolo do chat-reference; `GET /api/health`
+  e `GET /api/articles/{id}` completam a API.
+- Citações verificadas: cada artigo citado vira fonte com o texto oficial do
+  `articles.jsonl`; artigo inexistente, revogado ou vetado é sinalizado, e a tela
+  mostra tokens, custo, latência e confiança.
+- `src/lab/web/static/`: interface sem build, com `chat-renderer.js` e
+  `chat-messages.css` idênticos aos do `chat-reference/` (teste compara os bytes).
+- Dependências: fastapi, uvicorn; httpx (dev, TestClient).
+- Streaming na tela (`text_chunk`), usando `answer_stream` do núcleo.
+- Contexto da conversa: `POST /api/chat` aceita `history` e o repassa à estratégia.
+- Logs recolhidos: os passos ficam numa pílula ("Logs · 3 etapas · 5,3 s"); ao
+  expandir, também o raciocínio do modelo e a saída bruta (JSON), fechados por padrão.
+  `?logs=1` abre os logs de cada resposta.
+
 ### Adicionado (M2 — Avaliação)
 
 - `lab compare <run1> <run2> ...` (`src/lab/eval/compare.py`): tabela por

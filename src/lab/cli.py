@@ -52,6 +52,10 @@ from lab.llm import BudgetExceededError, LLMClient, LLMConfigError
 from lab.llm.cache import SQLiteCache
 from lab.settings import Settings, load_env, load_models_config
 from lab.strategies.factory import UnknownStrategyError, build_strategy, default_prompt
+from lab.web.app import create_app
+from lab.web.factory import build_service
+
+LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
 def check_granularity(value: str) -> Granularity:
@@ -549,3 +553,75 @@ def index(
         f"embeddings: {report.embed_tokens} tokens, ${report.embed_cost_usd:.6f}; "
         f"{report.cached} do cache"
     )
+
+
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host", help="Endereço de escuta (padrão: só local)."),
+    port: int = typer.Option(8000, "--port", min=1, max=65535, help="Porta."),
+    articles: Path = typer.Option(
+        Path("data/processed/articles.jsonl"),
+        "--articles",
+        help="Corpus, para conferir os artigos citados (gerado por lab ingest).",
+    ),
+    prompt: str = typer.Option("baseline_v1", "--prompt", help="Prompt em prompts/."),
+    role: str = typer.Option("generator", "--role", "-r", help="Papel de modelo em models.yaml."),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Ignora o cache em disco."),
+    config: Path | None = typer.Option(
+        None, "--config", help="Caminho alternativo de models.yaml."
+    ),
+    allow_remote: bool = typer.Option(
+        False,
+        "--allow-remote",
+        help="Permite escutar fora do localhost. Cada visitante gasta a cota do provedor.",
+    ),
+) -> None:
+    """Subir a interface web local (chat com citações verificadas).
+
+    Abre em http://127.0.0.1:8000. O servidor guarda a chave do provedor; o
+    navegador nunca a vê. Por padrão só escuta no localhost: expor a porta a
+    outras máquinas dá acesso ao modelo (e à cota) de quem chegar, então exige
+    --allow-remote.
+
+    Exemplo:
+
+        lab serve --port 8080
+    """
+    if host not in LOOPBACK_HOSTS and not allow_remote:
+        typer.secho(
+            f"error: {host} expõe o servidor fora desta máquina e qualquer visitante gasta a "
+            "cota do provedor. Use --allow-remote se for de propósito.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    settings = Settings()
+    cache = None if no_cache else SQLiteCache(settings.lab_cache_dir)
+    try:
+        service = build_service(
+            settings, articles, cache=cache, models_config=config, prompt=prompt, role=role
+        )
+    except FileNotFoundError as exc:
+        hint = " (rode `lab ingest` para gerá-lo)" if exc.filename == str(articles) else ""
+        typer.secho(
+            f"error: arquivo não encontrado: {exc.filename or exc}{hint}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        if cache is not None:
+            cache.close()
+        raise typer.Exit(code=1) from exc
+    except (CorpusError, KeyError, LLMConfigError) as exc:
+        typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
+        if cache is not None:
+            cache.close()
+        raise typer.Exit(code=1) from exc
+
+    import uvicorn
+
+    typer.echo(f"Interface em http://{host}:{port}  ({len(service.records)} artigos no corpus)")
+    try:
+        uvicorn.run(create_app(service), host=host, port=port, log_level="info")
+    finally:
+        if cache is not None:
+            cache.close()

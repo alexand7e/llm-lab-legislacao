@@ -77,6 +77,27 @@ A resposta vai para o stdout; tokens, custo e latência vão para o stderr:
 Repetições idênticas (mesmo modelo, mesma mensagem, mesmos parâmetros) saem do
 cache em disco e são gratuitas — o indicador (cache) aparece no stderr.
 
+### Interface local
+
+```bash
+uv run lab ingest        # uma vez: gera data/processed/articles.jsonl
+uv run lab serve         # abre em http://127.0.0.1:8000
+```
+
+Chat com o baseline (o modelo responde de memória). Cada artigo citado vira uma
+**fonte com o texto oficial** do corpus: se o artigo não existe, ou está
+revogado ou vetado, a fonte avisa. As mensagens seguem o
+[chat-reference](chat-reference/); a interface usa cópias idênticas dos arquivos
+dele (um teste garante que não divergem).
+
+- Só escuta no localhost. `--host 0.0.0.0` exige `--allow-remote`, porque cada
+  visitante gastaria a cota do provedor. A chave fica só no servidor.
+- `?ask=<pergunta>` na URL envia a pergunta ao abrir.
+- A resposta aparece em streaming e a conversa serve de contexto ("quem fez essa lei?"
+  funciona depois de falar da LGPD). Os passos, o raciocínio do modelo e a saída bruta ficam
+  em logs recolhidos; clique na pílula "Logs" para consultar, ou abra com `?logs=1`.
+- O visual carrega `marked`, `dompurify` e os ícones Phosphor por CDN (precisa de internet).
+
 ## Estrutura do repositório
 
     llm-lab-legislacao/

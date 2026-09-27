@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratório de legislação</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css">
+<link rel="stylesheet" href="/chat-messages.css">
+<link rel="stylesheet" href="/app.css">
+<script type="importmap">
+{ "imports": {
+  "marked": "https://cdn.jsdelivr.net/npm/marked@12/lib/marked.esm.js",
+  "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.es.mjs"
+} }
+</script>
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <div class="app-title">
+      <strong>Laboratório de legislação</strong>
+      <span id="app-subtitle">carregando…</span>
+    </div>
+    <button id="new-chat" class="app-btn" type="button" title="Nova conversa">
+      <i class="ph ph-plus"></i><span>Nova conversa</span>
+    </button>
+  </header>
+
+  <main id="scroll" class="app-scroll" aria-live="polite">
+    <div id="empty" class="app-empty">
+      <h1>Pergunte sobre a legislação</h1>
+      <p>
+        LGPD, Marco Civil da Internet e Código de Defesa do Consumidor. O modelo responde
+        <em>de memória</em>: cada artigo citado é conferido contra o texto oficial do corpus.
+      </p>
+      <div id="examples" class="app-examples"></div>
+    </div>
+    <div id="messages"></div>
+  </main>
+
+  <form id="composer" class="app-composer" autocomplete="off">
+    <div class="app-composer-row">
+      <textarea id="input" rows="1" maxlength="2000"
+        placeholder="Faça uma pergunta sobre LGPD, Marco Civil ou CDC…"
+        aria-label="Pergunta"></textarea>
+      <button id="send" class="app-send" type="submit" aria-label="Enviar" disabled>
+        <i class="ph-bold ph-arrow-up"></i>
+      </button>
+    </div>
+    <div class="app-composer-foot">
+      Experimental: não é aconselhamento jurídico. A resposta vem da memória do modelo e pode errar.
+    </div>
+  </form>
+</div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
