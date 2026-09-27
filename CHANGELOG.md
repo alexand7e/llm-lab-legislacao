@@ -8,6 +8,17 @@ Formato baseado em Keep a Changelog.
 
 ## Unreleased
 
+### Adicionado (núcleo: streaming e conversa)
+
+- `Strategy.answer(question, history=())`: mensagens anteriores da conversa como
+  contexto (`Message`); o baseline envia as últimas 8. `lab eval` segue com
+  pergunta única, então as métricas não mudam.
+- `LLMClient.chat_stream`: resposta em pedaços (raciocínio e texto) com cache,
+  retentativa só na abertura, fallback sem `response_format` e custo ao fim.
+- `BaselineStrategy.answer_stream` e `AnswerExtractor`, que extrai o campo
+  `answer` de um JSON ainda incompleto (escapes e pares substitutos cortados em
+  qualquer ponto); helpers `json_schema_format` e `parse_structured`.
+
 ### Adicionado (M2 — Avaliação)
 
 - src/lab/eval/dataset.py: schema `Question` (SPEC 7.1) e `load_questions`,

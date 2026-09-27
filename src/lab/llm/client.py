@@ -38,9 +38,9 @@ from __future__ import annotations
 import os
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
-from typing import Any, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 
 from openai import (
     APIConnectionError,
@@ -82,6 +82,47 @@ class Parsed[T: BaseModel]:
     value: T | None
     result: ChatResult
     error: str | None = None
+
+
+@dataclass(frozen=True)
+class StreamDelta:
+    """Pedaço de uma resposta em streaming.
+
+    ``content`` é o texto da resposta; ``reasoning`` é o raciocínio que alguns
+    modelos emitem antes dela (campo ``reasoning_content`` do provedor).
+    """
+
+    kind: Literal["content", "reasoning"]
+    text: str
+
+
+def json_schema_format(schema: type[BaseModel]) -> dict[str, Any]:
+    """``response_format`` de saída estruturada para um modelo Pydantic."""
+    return {
+        "type": "json_schema",
+        "json_schema": {"name": schema.__name__, "schema": schema.model_json_schema()},
+    }
+
+
+def parse_structured[T: BaseModel](text: str, schema: type[T]) -> tuple[T | None, str | None]:
+    """Validar ``text`` contra ``schema``, tolerando texto em volta do JSON.
+
+    Devolve ``(valor, None)`` ou ``(None, motivo)``; nunca levanta.
+    """
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end > start:
+        text = text[start : end + 1]
+    try:
+        return schema.model_validate_json(text), None
+    except ValidationError as exc:
+        return None, str(exc.errors()[0]["msg"])
+
+
+def _reasoning_of(delta: Any) -> str | None:
+    """Raciocínio no delta de um chunk (``reasoning_content`` ou ``reasoning``), se houver."""
+    extra: dict[str, Any] = getattr(delta, "model_extra", None) or {}
+    value = extra.get("reasoning_content") or extra.get("reasoning")
+    return value if isinstance(value, str) and value else None
 
 
 def _is_retryable(exc: Exception) -> bool:
@@ -237,6 +278,94 @@ class LLMClient:
         self._register_cost(usage)
         return ChatResult(text=text, usage=usage, latency_ms=latency_ms)
 
+    def chat_stream(
+        self,
+        role_name: str,
+        messages: list[dict[str, Any]],
+        *,
+        response_format: dict[str, Any] | None = None,
+        **params: Any,
+    ) -> Iterator[StreamDelta | ChatResult]:
+        """Como :meth:`chat`, mas devolve a resposta em pedaços, enquanto o modelo gera.
+
+        Produz :class:`StreamDelta` (``content`` e ``reasoning``) e, por último,
+        um :class:`ChatResult` completo (texto, tokens, custo, latência). Resposta
+        em cache vem inteira num único ``content``, seguida do resultado.
+
+        Retentativas valem só até a conexão abrir; uma queda no meio do stream
+        propaga o erro e nada é gravado no cache nem contado no custo. Se o
+        provedor recusar ``response_format``, repete sem ele.
+
+        :raises LLMConfigError: papel/provedor inválido ou variável ausente.
+        :raises BudgetExceededError: ao fim do stream, se o custo passou do limite.
+        """
+        role = self._role(role_name)
+        key = make_key(role.model, messages, {**params, "response_format": response_format})
+
+        if self._cache is not None and (hit := self._cache.get(key)) is not None:
+            yield StreamDelta("content", hit["text"])
+            yield ChatResult(
+                text=hit["text"], usage=Usage.model_validate(hit["usage"]), cached=True
+            )
+            return
+
+        with self._lock:
+            sdk = self._sdk_for(role).with_options(timeout=role.timeout_s)
+        kwargs: dict[str, Any] = {
+            "model": role.model,
+            "messages": messages,
+            "stream": True,
+            "stream_options": {"include_usage": True},
+            **params,
+        }
+        if response_format is not None:
+            kwargs["response_format"] = response_format
+
+        def open_stream() -> Any:
+            def call() -> Any:
+                return sdk.chat.completions.create(**kwargs)  # pyright: ignore[reportUnknownVariableType]
+
+            return self._with_retry(call)
+
+        started = time.perf_counter()
+        try:
+            stream = open_stream()
+        except BadRequestError:  # provider does not support response_format
+            if response_format is None:
+                raise
+            kwargs.pop("response_format")
+            stream = open_stream()
+
+        parts: list[str] = []
+        prompt_tokens = completion_tokens = 0
+        try:
+            for chunk in stream:
+                usage: Any = getattr(chunk, "usage", None)
+                if usage is not None:
+                    prompt_tokens = usage.prompt_tokens or 0
+                    completion_tokens = usage.completion_tokens or 0
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                reasoning = _reasoning_of(delta)
+                if reasoning:
+                    yield StreamDelta("reasoning", reasoning)
+                if delta.content:
+                    parts.append(delta.content)
+                    yield StreamDelta("content", delta.content)
+        finally:
+            close = getattr(stream, "close", None)
+            if callable(close):
+                close()
+        latency_ms = int((time.perf_counter() - started) * 1000)
+
+        text = "".join(parts)
+        cost = estimate_cost(role, prompt_tokens, completion_tokens)
+        if self._cache is not None:
+            self._cache.set(key, {"text": text, "usage": cost.model_dump()})
+        self._register_cost(cost)
+        yield ChatResult(text=text, usage=cost, latency_ms=latency_ms)
+
     def chat_parsed(
         self, role_name: str, messages: list[dict[str, Any]], schema: type[M], **params: Any
     ) -> Parsed[M]:
@@ -250,22 +379,13 @@ class LLMClient:
         :param schema: classe Pydantic que define o schema JSON esperado.
         :param params: parâmetros extras repassados a :meth:`chat`.
         """
-        response_format = {
-            "type": "json_schema",
-            "json_schema": {"name": schema.__name__, "schema": schema.model_json_schema()},
-        }
+        response_format = json_schema_format(schema)
         try:
             result = self.chat(role_name, messages, response_format=response_format, **params)
         except BadRequestError:  # provider does not support response_format
             result = self.chat(role_name, messages, **params)
-        text = result.text
-        start, end = text.find("{"), text.rfind("}")
-        if start != -1 and end > start:
-            text = text[start : end + 1]
-        try:
-            return Parsed(value=schema.model_validate_json(text), result=result)
-        except ValidationError as exc:
-            return Parsed(value=None, result=result, error=str(exc.errors()[0]["msg"]))
+        value, error = parse_structured(result.text, schema)
+        return Parsed(value=value, result=result, error=error)
 
     def chat_json(
         self, role_name: str, messages: list[dict[str, Any]], schema: type[M], **params: Any
