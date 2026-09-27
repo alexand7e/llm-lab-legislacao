@@ -108,7 +108,10 @@ def test_one_failing_question_does_not_stop_the_run():
 @pytest.mark.parametrize("error", [BudgetExceededError("estourou"), LLMConfigError("sem chave")])
 def test_budget_and_config_errors_abort_the_whole_run(error: Exception):
     qs = [make_question(n) for n in range(1, 30)]
-    strategy = FakeStrategy(fail={qs[0].question: error})
+    # As demais perguntas demoram um pouco: sem isso o worker esgota a fila antes de o
+    # cancelamento da rodada acontecer, e o teste ficaria dependente de timing.
+    slow = {q.question: 0.05 for q in qs[1:]}
+    strategy = FakeStrategy(delays=slow, fail={qs[0].question: error})
     with pytest.raises(type(error)):
         run_eval(strategy, qs, workers=1)
     assert len(strategy.calls) < len(qs)  # o que não começou foi cancelado
