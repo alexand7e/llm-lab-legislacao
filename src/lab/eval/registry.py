@@ -17,8 +17,9 @@ Cada execução vira uma pasta ``results/<AAAAMMDD-HHMM>-<estrategia>/`` com:
 - ``metrics.json``: agregados gerais e por categoria.
 
 **Um resultado só vale para o relatório se veio de um commit limpo**, com o
-conjunto oficial e sem erros. ``meta.json`` traz ``official`` calculado com essa
-regra, para o relatório filtrar sem reinterpretar.
+conjunto oficial e sem erros (nem da estratégia, nem do juiz). ``meta.json``
+traz ``official`` calculado com essa regra, para o relatório filtrar sem
+reinterpretar.
 """
 
 from __future__ import annotations
@@ -74,6 +75,8 @@ class RunConfig(BaseModel):
     workers: int
     max_usd: float
     use_cache: bool
+    judge_model: str | None = None  # None: run sem juiz
+    judge_prompt: str | None = None
 
 
 class RunMeta(BaseModel):
@@ -84,7 +87,9 @@ class RunMeta(BaseModel):
     started_at: datetime
     finished_at: datetime
     duration_s: float
-    total_cost_usd: float
+    total_cost_usd: float  # estratégia + juiz
+    judge_cost_usd: float = 0.0
+    judge_errors: int = 0
     questions: int
     errors: int
     dev_questions: bool  # há perguntas dev_draft: fora do conjunto congelado
@@ -142,6 +147,8 @@ def write_run(
 
     metrics = compute_metrics(questions, results)
     errors = sum(1 for r in results if r.error)
+    judge_cost = sum(r.verdict.usage.cost_usd for r in results if r.verdict is not None)
+    judge_errors = sum(1 for r in results if r.verdict is not None and r.verdict.error)
     dev = any(q.origin == "dev_draft" for q in questions)
     meta = RunMeta(
         commit=git.commit,
@@ -149,11 +156,19 @@ def write_run(
         started_at=started,
         finished_at=finished,
         duration_s=round((finished - started).total_seconds(), 3),
-        total_cost_usd=metrics.overall.cost_usd,
+        total_cost_usd=metrics.overall.cost_usd + judge_cost,
+        judge_cost_usd=judge_cost,
+        judge_errors=judge_errors,
         questions=len(questions),
         errors=errors,
         dev_questions=dev,
-        official=not git.dirty and git.commit is not None and not dev and errors == 0,
+        official=(
+            not git.dirty
+            and git.commit is not None
+            and not dev
+            and errors == 0
+            and judge_errors == 0
+        ),
     )
     (run_dir / "config.yaml").write_text(
         yaml.safe_dump(config.model_dump(), sort_keys=False, allow_unicode=True), encoding="utf-8"
