@@ -17,9 +17,10 @@ citados, ids recuperados, custo e latência.
 from __future__ import annotations
 
 import re
-from collections.abc import Collection, Iterable
+from collections.abc import Collection, Iterable, Iterator, Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
@@ -48,12 +49,53 @@ class Answer(BaseModel):
     parse_error: str | None = None
 
 
+class Message(BaseModel):
+    """Uma mensagem anterior da conversa (contexto para a pergunta atual)."""
+
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class Strategy(Protocol):
-    """Contrato de toda estratégia: um nome estável e ``answer``."""
+    """Contrato de toda estratégia: um nome estável e ``answer``.
+
+    ``history`` são as mensagens anteriores da conversa, da mais antiga para a
+    mais recente, sem a pergunta atual. A avaliação (``lab eval``) chama com
+    pergunta única, sem histórico; o chat da interface passa a conversa, para
+    perguntas como "quem fez essa lei?" serem entendidas no contexto.
+    """
 
     name: str
 
-    def answer(self, question: str) -> Answer: ...
+    def answer(self, question: str, history: Sequence[Message] = ()) -> Answer: ...
+
+
+@dataclass(frozen=True)
+class StreamChunk:
+    """Pedaço de uma resposta em streaming.
+
+    ``text`` é o texto da resposta em si; ``reasoning`` é o raciocínio do modelo,
+    quando ele o emite; ``raw`` é a saída bruta do modelo (o JSON estruturado).
+    """
+
+    channel: Literal["text", "reasoning", "raw"]
+    text: str
+
+
+StreamItem = StreamChunk | Answer
+
+
+@runtime_checkable
+class StreamingStrategy(Strategy, Protocol):
+    """Estratégia que também responde em streaming.
+
+    Produz :class:`StreamChunk` enquanto o modelo gera e, por último, a
+    :class:`Answer` completa (com citações, custo e latência).
+    """
+
+    def answer_stream(
+        self, question: str, history: Sequence[Message] = ()
+    ) -> Iterator[StreamItem]: ...
 
 
 _CITATION = re.compile(
@@ -88,4 +130,13 @@ def load_prompt(name: str, prompts_dir: Path = Path("prompts")) -> str:
     return (prompts_dir / f"{name}.md").read_text(encoding="utf-8").strip()
 
 
-__all__ = ["Answer", "Strategy", "load_prompt", "normalize_citations"]
+__all__ = [
+    "Answer",
+    "Message",
+    "StreamChunk",
+    "StreamItem",
+    "Strategy",
+    "StreamingStrategy",
+    "load_prompt",
+    "normalize_citations",
+]

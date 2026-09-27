@@ -8,7 +8,24 @@
 
 """Estratégias de resposta a perguntas sobre legislação."""
 
-from lab.strategies.base import Answer, Strategy, load_prompt, normalize_citations
+from lab.strategies.base import (
+    Answer,
+    Message,
+    Strategy,
+    StreamChunk,
+    StreamingStrategy,
+    load_prompt,
+    normalize_citations,
+)
 from lab.strategies.baseline import BaselineStrategy
 
-__all__ = ["Answer", "BaselineStrategy", "Strategy", "load_prompt", "normalize_citations"]
+__all__ = [
+    "Answer",
+    "BaselineStrategy",
+    "Message",
+    "StreamChunk",
+    "Strategy",
+    "StreamingStrategy",
+    "load_prompt",
+    "normalize_citations",
+]
