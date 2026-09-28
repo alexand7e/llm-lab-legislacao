@@ -10,6 +10,11 @@ Formato baseado em Keep a Changelog.
 
 ### Adicionado (M4 — RAG vetorial)
 
+- `lab index` e `src/lab/index/store.py`: coleção no Qdrant com o chunk inteiro
+  no payload e busca por similaridade (cosseno), com filtro opcional por norma.
+  Usa o Qdrant Cloud se `QDRANT_URL` estiver definido; senão, índice local em
+  arquivo (`LAB_QDRANT_PATH`, padrão `.cache/qdrant`). Nome da coleção inclui
+  granularidade e modelo (`lab_article_bge-m3`). Dependência: qdrant-client.
 - `LLMClient.embed`: embeddings em lotes, na ordem de entrada, com retentativa,
   custo pelo `price_in` do papel e cache por texto (reindexar só paga pelo que
   mudou). Confere a dimensão contra `dims` do papel. Corpus inteiro: 223 vetores,

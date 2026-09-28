@@ -42,6 +42,8 @@ from lab.eval.registry import (
     write_run,
 )
 from lab.eval.runner import QuestionResult, run_eval
+from lab.index.build import build_index
+from lab.index.store import collection_name, open_index
 from lab.ingest.export import CorpusError, read_jsonl
 from lab.ingest.pipeline import run_ingest
 from lab.ingest.sources import load_corpus
@@ -446,3 +448,64 @@ def compare(
     typer.echo(render_markdown(loaded, rows) if markdown else render_text(loaded, rows))
     for warning in compatibility_warnings(loaded):
         typer.secho(f"aviso: {warning}", fg=typer.colors.YELLOW, err=True)
+
+
+@app.command()
+def index(
+    articles: Path = typer.Option(
+        Path("data/processed/articles.jsonl"), "--articles", help="Corpus (gerado por lab ingest)."
+    ),
+    role: str = typer.Option("embedding", "--role", help="Papel de embedding em models.yaml."),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Ignora o cache de embeddings."),
+    config: Path | None = typer.Option(
+        None, "--config", help="Caminho alternativo de models.yaml."
+    ),
+) -> None:
+    """Indexar o corpus no Qdrant: chunks por artigo, embeddings e coleção.
+
+    Usa o Qdrant Cloud se QDRANT_URL estiver definido; senão, um índice local
+    em arquivo (LAB_QDRANT_PATH, padrão .cache/qdrant). A coleção é recriada a
+    cada execução; os embeddings saem do cache quando o texto não mudou.
+
+    Exemplo:
+
+        lab index
+    """
+    settings = Settings()
+    cache = None if no_cache else SQLiteCache(settings.lab_cache_dir)
+    try:
+        records = read_jsonl(articles)
+        laws = load_corpus(settings.lab_corpus_config).laws
+        models = load_models_config(config or settings.lab_models_config)
+        if role not in models.roles:
+            raise LLMConfigError(f"unknown role: {role!r}")
+        client = LLMClient(
+            models, cache=cache, max_usd=settings.lab_max_usd_per_run, env=load_env()
+        )
+        with open_index(
+            settings.qdrant_url,
+            settings.qdrant_api_key,
+            settings.lab_qdrant_path,
+            collection_name("article", models.roles[role].model),
+        ) as store:
+            report = build_index(records, laws, client, store, role=role)
+    except FileNotFoundError as exc:
+        hint = " (rode `lab ingest`)" if exc.filename == str(articles) else ""
+        typer.secho(
+            f"error: arquivo não encontrado: {exc.filename or exc}{hint}", fg="red", err=True
+        )
+        raise typer.Exit(code=1) from exc
+    except (CorpusError, LLMConfigError, BudgetExceededError) as exc:
+        typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        if cache is not None:
+            cache.close()
+
+    where = "Qdrant Cloud" if settings.qdrant_url else f"local em {settings.lab_qdrant_path}"
+    laws_summary = ", ".join(f"{law}: {n}" for law, n in report.by_law.items())
+    typer.echo(f"{report.chunks} chunks ({laws_summary}) na coleção {report.collection} ({where})")
+    typer.echo(
+        f"embeddings: {report.embed_tokens} tokens, ${report.embed_cost_usd:.6f}; "
+        f"{report.cached} do cache"
+    )

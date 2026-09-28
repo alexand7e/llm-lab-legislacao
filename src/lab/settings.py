@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     - ``lab_cache_dir``: diretório do cache SQLite de respostas.
     - ``lab_models_config``: caminho de ``models.yaml``.
     - ``lab_corpus_config``: caminho de ``corpus.yaml`` (normas do corpus).
+    - ``qdrant_url`` / ``qdrant_api_key``: Qdrant Cloud; sem URL, o índice fica
+      local em ``lab_qdrant_path``.
 
     ``extra="ignore"``: variáveis não conhecidas (chaves de provedores,
     Qdrant etc.) não causam erro.
@@ -53,6 +55,9 @@ class Settings(BaseSettings):
     lab_cache_dir: Path = Path(".cache/llm")
     lab_models_config: Path = Path("config/models.yaml")
     lab_corpus_config: Path = Path("config/corpus.yaml")
+    lab_qdrant_path: Path = Path(".cache/qdrant")  # índice local, se não houver QDRANT_URL
+    qdrant_url: str | None = None
+    qdrant_api_key: str | None = None
 
 
 class Provider(BaseModel):
