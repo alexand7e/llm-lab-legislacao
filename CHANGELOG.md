@@ -8,6 +8,12 @@ Formato baseado em Keep a Changelog.
 
 ## Unreleased
 
+### Adicionado (M4 — RAG vetorial)
+
+- `src/lab/index/chunking.py`: `Chunk` e chunking por artigo (um chunk por
+  artigo vigente, 223 no corpus). `embed_text` leva um cabeçalho com a norma e a
+  hierarquia (capítulo, seção) antes do texto oficial; `text` fica só com o texto.
+
 ### Corrigido (M2 — Avaliação)
 
 - Quando o modelo ignora o formato JSON e escreve os campos no fim do texto
