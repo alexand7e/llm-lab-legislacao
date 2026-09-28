@@ -43,7 +43,7 @@ from lab.eval.registry import (
 )
 from lab.eval.runner import QuestionResult, run_eval
 from lab.index.build import build_index
-from lab.index.store import collection_name, open_index
+from lab.index.store import IndexNotReadyError, VectorIndex, collection_name, open_index
 from lab.ingest.export import CorpusError, read_jsonl
 from lab.ingest.pipeline import run_ingest
 from lab.ingest.sources import load_corpus
@@ -206,7 +206,7 @@ def ingest(
 def ask(
     question: str = typer.Argument(..., help="Pergunta sobre a legislação do corpus."),
     strategy_name: str = typer.Option(
-        "baseline", "--strategy", "-s", help="Estratégia: baseline, fewshot ou long_context."
+        "baseline", "--strategy", "-s", help="Estratégia: baseline, fewshot, long_context ou rag."
     ),
     prompt: str | None = typer.Option(
         None, "--prompt", help="Prompt em prompts/ (padrão: o da estratégia)."
@@ -289,12 +289,13 @@ def eval_command(
         help="Corpus, para conferir o gabarito das perguntas antes de gastar.",
     ),
     strategy_name: str = typer.Option(
-        "baseline", "--strategy", "-s", help="Estratégia: baseline, fewshot ou long_context."
+        "baseline", "--strategy", "-s", help="Estratégia: baseline, fewshot, long_context ou rag."
     ),
     prompt: str | None = typer.Option(
         None, "--prompt", help="Prompt em prompts/ (padrão: o da estratégia)."
     ),
     role: str = typer.Option("generator", "--role", "-r", help="Papel de modelo em models.yaml."),
+    k: int = typer.Option(5, "--k", min=1, help="Chunks recuperados (só rag)."),
     limit: int | None = typer.Option(None, "--limit", "-n", help="Só as N primeiras perguntas."),
     workers: int = typer.Option(4, "--workers", "-w", min=1, help="Perguntas em paralelo."),
     out: Path = typer.Option(Path("results"), "--out", help="Pasta onde gravar a run."),
@@ -324,6 +325,7 @@ def eval_command(
     """
     settings = Settings()
     cache = None if no_cache else SQLiteCache(settings.lab_cache_dir)
+    store: VectorIndex | None = None
     try:
         questions = load_questions(questions_file)
         records = read_jsonl(articles) if articles.exists() else None
@@ -338,8 +340,22 @@ def eval_command(
         client = LLMClient(
             models, cache=cache, max_usd=settings.lab_max_usd_per_run, env=load_env()
         )
+        if strategy_name == "rag":
+            store = open_index(
+                settings.qdrant_url,
+                settings.qdrant_api_key,
+                settings.lab_qdrant_path,
+                collection_name("article", models.roles["embedding"].model),
+            )
         strategy = build_strategy(
-            strategy_name, client, corpus.laws, prompt=prompt, role=role, records=records
+            strategy_name,
+            client,
+            corpus.laws,
+            prompt=prompt,
+            role=role,
+            records=records,
+            index=store,
+            k=k,
         )
         grader = None
         if judge:
@@ -369,6 +385,8 @@ def eval_command(
             use_cache=cache is not None,
             judge_model=models.roles["judge"].model if grader else None,
             judge_prompt=judge_prompt if grader else None,
+            k=k if store is not None else None,
+            collection=store.collection if store is not None else None,
         )
         run_dir = write_run(
             out,
@@ -389,10 +407,13 @@ def eval_command(
         BudgetExceededError,
         JudgeError,
         UnknownStrategyError,
+        IndexNotReadyError,
     ) as exc:
         typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
     finally:
+        if store is not None:
+            store.close()
         if cache is not None:
             cache.close()
 

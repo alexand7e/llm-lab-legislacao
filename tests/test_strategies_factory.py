@@ -41,9 +41,9 @@ def test_every_strategy_has_an_existing_default_prompt():
 
 def test_unknown_strategy():
     with pytest.raises(UnknownStrategyError, match="opções: baseline"):
-        default_prompt("rag")
+        default_prompt("graphrag")
     with pytest.raises(UnknownStrategyError):
-        build_strategy("rag", object(), LAWS, prompts_dir=PROMPTS)  # type: ignore[arg-type]
+        build_strategy("graphrag", object(), LAWS, prompts_dir=PROMPTS)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("name", ["baseline", "fewshot"])

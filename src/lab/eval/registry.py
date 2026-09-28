@@ -77,6 +77,8 @@ class RunConfig(BaseModel):
     use_cache: bool
     judge_model: str | None = None  # None: run sem juiz
     judge_prompt: str | None = None
+    k: int | None = None  # chunks recuperados (estratégias com busca)
+    collection: str | None = None  # coleção vetorial usada
 
 
 class RunMeta(BaseModel):
