@@ -10,6 +10,10 @@ Formato baseado em Keep a Changelog.
 
 ### Adicionado (M4 — RAG vetorial)
 
+- `LLMClient.embed`: embeddings em lotes, na ordem de entrada, com retentativa,
+  custo pelo `price_in` do papel e cache por texto (reindexar só paga pelo que
+  mudou). Confere a dimensão contra `dims` do papel. Corpus inteiro: 223 vetores,
+  ~43 mil tokens, 4,5 s; segunda vez, 0,1 s do cache.
 - `src/lab/index/chunking.py`: `Chunk` e chunking por artigo (um chunk por
   artigo vigente, 223 no corpus). `embed_text` leva um cabeçalho com a norma e a
   hierarquia (capítulo, seção) antes do texto oficial; `text` fica só com o texto.

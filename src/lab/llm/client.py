@@ -38,7 +38,7 @@ from __future__ import annotations
 import os
 import threading
 import time
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, TypeVar, cast
 
@@ -49,6 +49,7 @@ from openai import (
     DefaultHttpxClient,
     OpenAI,
 )
+from openai.types import CreateEmbeddingResponse
 from openai.types.chat import ChatCompletion
 from pydantic import BaseModel, ValidationError
 
@@ -82,6 +83,14 @@ class Parsed[T: BaseModel]:
     value: T | None
     result: ChatResult
     error: str | None = None
+
+
+class Embeddings(BaseModel):
+    """Resultado de :meth:`LLMClient.embed`: um vetor por texto, na mesma ordem."""
+
+    vectors: list[list[float]]
+    usage: Usage
+    cached: int = 0  # quantos vieram do cache
 
 
 @dataclass(frozen=True)
@@ -403,3 +412,57 @@ class LLMClient:
         if parsed.value is None:
             raise ValueError(f"resposta fora do schema {schema.__name__}: {parsed.error}")
         return parsed.value
+
+    def embed(self, role_name: str, texts: Sequence[str], *, batch_size: int = 64) -> Embeddings:
+        """Vetores de ``texts`` com o papel de embedding, em lotes.
+
+        Cada texto é cacheado separadamente (chave: modelo + texto), então
+        reindexar só paga pelos textos novos ou alterados. A ordem da saída é a
+        de ``texts``. O custo usa ``price_in`` do papel (embedding só tem entrada).
+
+        :raises LLMConfigError: papel desconhecido, ou vetor com dimensão diferente
+            de ``dims`` do papel (modelo trocado sem ajustar ``models.yaml``).
+        :raises BudgetExceededError: custo acumulado passou do limite.
+        """
+        role = self._role(role_name)
+        vectors: list[list[float] | None] = [None] * len(texts)
+        keys = [make_key(role.model, [{"role": "embed", "content": t}], {}) for t in texts]
+        pending: list[int] = []
+        for i, key in enumerate(keys):
+            hit = self._cache.get(key) if self._cache is not None else None
+            if hit is not None:
+                vectors[i] = hit["vector"]
+            else:
+                pending.append(i)
+
+        prompt_tokens = 0
+        if pending:
+            with self._lock:
+                sdk = self._sdk_for(role).with_options(timeout=role.timeout_s)
+            for start in range(0, len(pending), batch_size):
+                batch = pending[start : start + batch_size]
+                inputs = [texts[i] for i in batch]
+
+                def call(inputs: list[str] = inputs) -> Any:
+                    return sdk.embeddings.create(model=role.model, input=inputs)
+
+                response = cast(CreateEmbeddingResponse, self._with_retry(call))
+                for item in response.data:
+                    index = batch[item.index]
+                    vectors[index] = list(item.embedding)
+                    if self._cache is not None:
+                        self._cache.set(keys[index], {"vector": vectors[index]})
+                prompt_tokens += response.usage.prompt_tokens if response.usage else 0
+
+        result = [v for v in vectors if v is not None]
+        if len(result) != len(texts):
+            raise LLMConfigError(
+                f"o provedor devolveu {len(result)} vetores para {len(texts)} textos"
+            )
+        if role.dims is not None and any(len(v) != role.dims for v in result):
+            raise LLMConfigError(
+                f"vetor com dimensão {len(result[0])}, mas models.yaml diz dims={role.dims}"
+            )
+        usage = estimate_cost(role, prompt_tokens, 0)
+        self._register_cost(usage)
+        return Embeddings(vectors=result, usage=usage, cached=len(texts) - len(pending))

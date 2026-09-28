@@ -6,6 +6,20 @@
 # License:  Apache-2.0
 # -----------------------------------------------------------------------------
 
-from lab.llm.client import BudgetExceededError, ChatResult, LLMClient, LLMConfigError, Parsed
+from lab.llm.client import (
+    BudgetExceededError,
+    ChatResult,
+    Embeddings,
+    LLMClient,
+    LLMConfigError,
+    Parsed,
+)
 
-__all__ = ["BudgetExceededError", "ChatResult", "LLMClient", "LLMConfigError", "Parsed"]
+__all__ = [
+    "BudgetExceededError",
+    "ChatResult",
+    "Embeddings",
+    "LLMClient",
+    "LLMConfigError",
+    "Parsed",
+]
