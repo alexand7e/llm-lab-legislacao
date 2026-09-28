@@ -10,6 +10,11 @@ Formato baseado em Keep a Changelog.
 
 ### Adicionado (M4 — RAG vetorial)
 
+- Estratégia `rag` (`src/lab/strategies/rag.py`, `prompts/rag_v1.md`): embedding
+  da pergunta, busca dos k chunks mais próximos (`--k`, padrão 5) e resposta só
+  com os trechos, citação obrigatória. `retrieved_ids` liga recall@k e MRR; o
+  custo do embedding soma no custo da resposta. Gancho `_context` no baseline
+  para estratégias com recuperação; `config.yaml` da run registra k e coleção.
 - `lab index` e `src/lab/index/store.py`: coleção no Qdrant com o chunk inteiro
   no payload e busca por similaridade (cosseno), com filtro opcional por norma.
   Usa o Qdrant Cloud se `QDRANT_URL` estiver definido; senão, índice local em

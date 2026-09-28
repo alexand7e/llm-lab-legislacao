@@ -26,6 +26,7 @@ from pydantic import BaseModel
 
 from lab.ingest.sources import LawSource
 from lab.llm.client import ChatResult, LLMClient, json_schema_format, parse_structured
+from lab.llm.costs import Usage
 from lab.strategies.base import (
     Answer,
     Message,
@@ -39,6 +40,14 @@ from lab.strategies.streaming import AnswerExtractor
 
 # Quantas mensagens anteriores da conversa vão ao modelo (custo e contexto limitados).
 MAX_HISTORY_MESSAGES = 8
+
+
+class Context(BaseModel):
+    """Material recuperado para uma pergunta (vazio no baseline)."""
+
+    text: str = ""
+    retrieved_ids: list[str] = []
+    usage: Usage = Usage()
 
 
 class BaselineOutput(BaseModel):
@@ -82,50 +91,79 @@ class BaselineStrategy:
         listing = "\n".join(f"- {law.name}, {law.number} ({law.id})" for law in laws)
         self._system = load_prompt(prompt, prompts_dir).replace("{laws}", listing)
 
-    def _messages(self, question: str, history: Sequence[Message]) -> list[dict[str, str]]:
-        """System + as últimas mensagens da conversa + a pergunta atual."""
+    def _context(self, question: str) -> Context:
+        """Material extra para a pergunta. O baseline não recupera nada.
+
+        Estratégias com recuperação (RAG) sobrescrevem este método: o texto vai
+        junto da pergunta, os ids viram ``Answer.retrieved_ids`` e o custo da
+        recuperação soma no custo da resposta.
+        """
+        return Context()
+
+    def _messages(
+        self, question: str, history: Sequence[Message], context: Context | None = None
+    ) -> list[dict[str, str]]:
+        """System + as últimas mensagens da conversa + a pergunta atual (com contexto)."""
         recent = [m for m in history if m.content.strip()][-MAX_HISTORY_MESSAGES:]
+        content = question
+        if context is not None and context.text:
+            content = f"{context.text}\n\nPergunta: {question}"
         return [
             {"role": "system", "content": self._system},
             *({"role": m.role, "content": m.content} for m in recent),
-            {"role": "user", "content": question},
+            {"role": "user", "content": content},
         ]
 
     def _build_answer(
-        self, value: BaselineOutput | None, error: str | None, result: ChatResult
+        self,
+        value: BaselineOutput | None,
+        error: str | None,
+        result: ChatResult,
+        context: Context | None = None,
     ) -> Answer:
         """Answer a partir da saída validada.
 
         Sem ela (modelo ignorou o formato), recupera citações e confiança das
         linhas rotuladas do texto livre; ``parse_error`` continua registrado.
         """
+        context = context or Context()
+        usage = result.usage
+        if context.usage.prompt_tokens or context.usage.cost_usd:
+            usage = Usage(
+                prompt_tokens=usage.prompt_tokens + context.usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                cost_usd=usage.cost_usd + context.usage.cost_usd,
+            )
         if value is None:
             text, cited, confidence = salvage_fields(result.text, self._law_ids)
             return Answer(
                 text=text or result.text.strip(),
                 cited_articles=cited,
+                retrieved_ids=context.retrieved_ids,
                 confidence=confidence,
-                usage=result.usage,
+                usage=usage,
                 latency_ms=result.latency_ms,
                 parse_error=error,
             )
         return Answer(
             text=value.answer.strip(),
             cited_articles=normalize_citations(value.cited_articles, self._law_ids),
+            retrieved_ids=context.retrieved_ids,
             confidence=value.confidence,
-            usage=result.usage,
+            usage=usage,
             latency_ms=result.latency_ms,
         )
 
     def answer(self, question: str, history: Sequence[Message] = ()) -> Answer:
+        context = self._context(question)
         parsed = self._client.chat_parsed(
             self._role,
-            self._messages(question, history),
+            self._messages(question, history, context),
             BaselineOutput,
             temperature=0,
             max_tokens=self._max_tokens,
         )
-        return self._build_answer(parsed.value, parsed.error, parsed.result)
+        return self._build_answer(parsed.value, parsed.error, parsed.result, context)
 
     def answer_stream(self, question: str, history: Sequence[Message] = ()) -> Iterator[StreamItem]:
         """Como :meth:`answer`, mas emite a resposta enquanto o modelo a gera.
@@ -135,9 +173,10 @@ class BaselineStrategy:
         e por fim a :class:`Answer` completa, igual à de :meth:`answer`.
         """
         extractor = AnswerExtractor()
+        context = self._context(question)
         stream = self._client.chat_stream(
             self._role,
-            self._messages(question, history),
+            self._messages(question, history, context),
             response_format=json_schema_format(BaselineOutput),
             temperature=0,
             max_tokens=self._max_tokens,
@@ -145,7 +184,7 @@ class BaselineStrategy:
         for item in stream:
             if isinstance(item, ChatResult):
                 value, error = parse_structured(item.text, BaselineOutput)
-                yield self._build_answer(value, error, item)
+                yield self._build_answer(value, error, item, context)
                 return
             if item.kind == "reasoning":
                 yield StreamChunk("reasoning", item.text)
@@ -156,4 +195,4 @@ class BaselineStrategy:
                 yield StreamChunk("text", text)
 
 
-__all__ = ["BaselineOutput", "BaselineStrategy"]
+__all__ = ["BaselineOutput", "BaselineStrategy", "Context"]

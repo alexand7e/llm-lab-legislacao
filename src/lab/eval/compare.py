@@ -59,7 +59,8 @@ class Run:
     def label(self) -> str:
         """Rótulo curto: estratégia, prompt e modelo."""
         models = ",".join(self.config.roles.values())
-        return f"{self.config.strategy}/{self.config.prompt}/{models}"
+        label = f"{self.config.strategy}/{self.config.prompt}/{models}"
+        return f"{label}/k={self.config.k}" if self.config.k else label
 
 
 def load_run(path: Path) -> Run:
