@@ -43,6 +43,7 @@ from lab.eval.registry import (
 )
 from lab.eval.runner import QuestionResult, run_eval
 from lab.index.build import build_index
+from lab.index.chunking import GRANULARITIES, Granularity
 from lab.index.store import IndexNotReadyError, VectorIndex, collection_name, open_index
 from lab.ingest.export import CorpusError, read_jsonl
 from lab.ingest.pipeline import run_ingest
@@ -51,6 +52,16 @@ from lab.llm import BudgetExceededError, LLMClient, LLMConfigError
 from lab.llm.cache import SQLiteCache
 from lab.settings import Settings, load_env, load_models_config
 from lab.strategies.factory import UnknownStrategyError, build_strategy, default_prompt
+
+
+def check_granularity(value: str) -> Granularity:
+    """Validar ``--granularity`` (erro de configuração com as opções)."""
+    if value not in GRANULARITIES:
+        raise LLMConfigError(
+            f"granularidade desconhecida: {value!r} (opções: {', '.join(GRANULARITIES)})"
+        )
+    return value  # type: ignore[return-value]
+
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -296,6 +307,9 @@ def eval_command(
     ),
     role: str = typer.Option("generator", "--role", "-r", help="Papel de modelo em models.yaml."),
     k: int = typer.Option(5, "--k", min=1, help="Chunks recuperados (só rag)."),
+    granularity: str = typer.Option(
+        "article", "--granularity", "-g", help="Chunking: article ou unit (caput/parágrafo)."
+    ),
     limit: int | None = typer.Option(None, "--limit", "-n", help="Só as N primeiras perguntas."),
     workers: int = typer.Option(4, "--workers", "-w", min=1, help="Perguntas em paralelo."),
     out: Path = typer.Option(Path("results"), "--out", help="Pasta onde gravar a run."),
@@ -345,7 +359,7 @@ def eval_command(
                 settings.qdrant_url,
                 settings.qdrant_api_key,
                 settings.lab_qdrant_path,
-                collection_name("article", models.roles["embedding"].model),
+                collection_name(check_granularity(granularity), models.roles["embedding"].model),
             )
         strategy = build_strategy(
             strategy_name,
@@ -477,12 +491,15 @@ def index(
         Path("data/processed/articles.jsonl"), "--articles", help="Corpus (gerado por lab ingest)."
     ),
     role: str = typer.Option("embedding", "--role", help="Papel de embedding em models.yaml."),
+    granularity: str = typer.Option(
+        "article", "--granularity", "-g", help="Chunking: article ou unit (caput/parágrafo)."
+    ),
     no_cache: bool = typer.Option(False, "--no-cache", help="Ignora o cache de embeddings."),
     config: Path | None = typer.Option(
         None, "--config", help="Caminho alternativo de models.yaml."
     ),
 ) -> None:
-    """Indexar o corpus no Qdrant: chunks por artigo, embeddings e coleção.
+    """Indexar o corpus no Qdrant: chunks (por artigo ou dispositivo), embeddings e coleção.
 
     Usa o Qdrant Cloud se QDRANT_URL estiver definido; senão, um índice local
     em arquivo (LAB_QDRANT_PATH, padrão .cache/qdrant). A coleção é recriada a
@@ -507,9 +524,11 @@ def index(
             settings.qdrant_url,
             settings.qdrant_api_key,
             settings.lab_qdrant_path,
-            collection_name("article", models.roles[role].model),
+            collection_name(check_granularity(granularity), models.roles[role].model),
         ) as store:
-            report = build_index(records, laws, client, store, role=role)
+            report = build_index(
+                records, laws, client, store, role=role, granularity=check_granularity(granularity)
+            )
     except FileNotFoundError as exc:
         hint = " (rode `lab ingest`)" if exc.filename == str(articles) else ""
         typer.secho(

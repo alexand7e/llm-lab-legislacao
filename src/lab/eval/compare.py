@@ -61,7 +61,11 @@ class Run:
         """Rótulo curto: estratégia, prompt e modelo."""
         models = ",".join(self.config.roles.values())
         label = f"{self.config.strategy}/{self.config.prompt}/{models}"
-        return f"{label}/k={self.config.k}" if self.config.k else label
+        if self.config.k:
+            label += f"/k={self.config.k}"
+        if self.config.collection:  # lab_<granularidade>_<modelo>
+            label += f"/{self.config.collection.split('_')[1]}"
+        return label
 
 
 def load_run(path: Path) -> Run:
