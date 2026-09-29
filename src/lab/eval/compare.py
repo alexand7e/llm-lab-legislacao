@@ -36,6 +36,7 @@ METRICS: tuple[tuple[str, str, bool], ...] = (
     ("citation_hit", "cita gabarito", True),
     ("citation_precision", "precisão citação", True),
     ("recall_at_5", "recall@5", True),
+    ("recall_at_10", "recall@10", True),
     ("mrr", "MRR", True),
     ("abstention_correct", "abstenção ok", True),
     ("wrongful_refusal", "recusa indevida", False),
