@@ -1,6 +1,6 @@
 # Plano de execução
 
-Última avaliação: 2026-09-27. Requisitos: [SPEC.md](../SPEC.md) seções 8.5 (definição de pronto) e 10 (milestones).
+Última avaliação: 2026-09-28. Requisitos: [SPEC.md](../SPEC.md) seções 8.5 (definição de pronto) e 10 (milestones).
 
 ## Situação por milestone
 
@@ -9,7 +9,8 @@
 | M0 — Fundação | Concluído | Tag `v0.1.0` |
 | M1 — Corpus | Concluído (#11–#18, #75, #83) | Conferência manual de 20 artigos (`scripts/sample_articles.py`); tag `v0.2.0` |
 | M2 — Avaliação | Concluído no que é código (#19, #21–#23, #25, #26; ferramentas da #24) | **#20** as 80 perguntas; **#24** anotar 20 respostas; #69 Langfuse |
-| M3 — Baseline de prompting | #27–#31 e #92 concluídos | **#32** comparar modelos (decisão sobre o juiz, abaixo) |
+| M3 — Baseline de prompting | #27–#31 e #92 concluídos | #32 comparação preliminar feita (juiz Qwen, por decisão); fecha com o conjunto oficial |
+| M4 — RAG vetorial | #33–#38 concluídos | **#39** aceitar o ADR 0002 (proposto); Qdrant Cloud opcional (roda local sem `QDRANT_URL`) |
 
 Pendências em **negrito** são humanas ou dependem de decisão do mantenedor.
 
@@ -19,19 +20,22 @@ Pendências em **negrito** são humanas ou dependem de decisão do mantenedor.
 2. **#24 — validar o juiz**: rodar `lab eval` no conjunto oficial, `scripts/judge_annotation.py export results/<run>`, preencher `human_score` (anotação cega) e `agreement`. Aceite: concordância exata ≥ 80%; abaixo disso, nova rubrica `judge_v2` antes de comparar estratégias.
 3. #69 (Langfuse) é opcional para o aceite; fica para depois do M3.
 
-## M3 — resultados preliminares (16 perguntas de desenvolvimento, não oficiais)
+## Resultados preliminares (16 perguntas de desenvolvimento, não oficiais)
 
-| estratégia | correção | cita gabarito | tokens de entrada / pergunta |
-|---|---|---|---|
-| baseline | 0.44 | 0.46 | 360 |
-| fewshot | 0.56 | 0.46 | 758 |
-| long_context | 1.00 | 0.77 | 41.735 |
+| estratégia | correção | cita gabarito | recall@10 | tokens de entrada / pergunta |
+|---|---|---|---|---|
+| baseline (soberano-alpha) | 0,44 | 0,46 | — | 360 |
+| baseline (Qwen3.8-27B) | 0,59 | 0,69 | — | 328 |
+| fewshot | 0,56 | 0,46 | — | 758 |
+| rag, article, k = 5 | 0,91 | 1,00 | 0,92 | 2.158 |
+| **rag, unit, k = 10** | **0,97** | **1,00** | **1,00** | **1.788** |
+| long_context (lei inteira) | 1,00 | 1,00 | — | 41.735 |
 
-Leitura: de memória o modelo erra números e artigos; com a lei no prompt acerta tudo, a um custo de ~116× em tokens de entrada. É a referência do M4: o RAG precisa se aproximar dessa correção com uma fração dos tokens.
+Leitura: de memória o modelo erra números e artigos; com a lei inteira acerta tudo a ~23× o custo em tokens do melhor RAG. O RAG por dispositivo chega perto do teto com uma fração dos tokens. Experimentos em `docs/experiments/`.
 
-### #32 — comparar modelos (bloqueado por decisão)
+## Próximos passos (M5 — RAG avançado)
 
-Modelos disponíveis no provedor: `soberano-alpha` (gerador atual), `Qwen/Qwen3.6-35B-A3B` (juiz atual), `Qwen3.8-27B`. A SPEC 4.2 exige juiz de família diferente do gerador. Um gerador Qwen avaliado por juiz Qwen fere essa regra; trocar o juiz só para essas runs torna a correção não comparável (`lab compare` avisa). E a linhagem do `soberano-alpha` ainda não foi confirmada. Precisa de uma decisão sobre o juiz antes de rodar.
+Partem de `rag -g unit --k 10`: busca híbrida BM25 + densa (#40; o provedor tem `Qdrant/bm25`), reranking (#41; o provedor tem `colbert-ir/colbertv2.0`), reescrita/decomposição de consulta (#42, alvo das perguntas de duas partes), expansão por remissões (#43), filtro por norma (#44).
 
 ## Interface local
 
