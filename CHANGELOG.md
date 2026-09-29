@@ -10,6 +10,11 @@ Formato baseado em Keep a Changelog.
 
 ### Adicionado (M4 — RAG vetorial)
 
+- Chunking por dispositivo (`--granularity unit`): caput e cada parágrafo, com
+  seus incisos e alíneas (509 chunks). `lab index -g unit` cria a coleção
+  `lab_unit_bge-m3`; `lab eval --strategy rag -g unit` usa essa coleção.
+  `lab compare` mostra k e granularidade no rótulo. Experimento em
+  `docs/experiments/2026-09-28-rag-chunking-dispositivo.md`.
 - Experimento de variação de k (3, 5, 10) em `docs/experiments/2026-09-28-rag-variacao-k.md`;
   `lab compare` passa a mostrar recall@10.
 - Estratégia `rag` (`src/lab/strategies/rag.py`, `prompts/rag_v1.md`): embedding
