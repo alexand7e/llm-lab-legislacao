@@ -10,6 +10,7 @@ Formato baseado em Keep a Changelog.
 
 ### Adicionado (M4 — RAG vetorial)
 
+- ADR 0002 (proposto): chunking por dispositivo com k = 10 como padrão do RAG.
 - Chunking por dispositivo (`--granularity unit`): caput e cada parágrafo, com
   seus incisos e alíneas (509 chunks). `lab index -g unit` cria a coleção
   `lab_unit_bge-m3`; `lab eval --strategy rag -g unit` usa essa coleção.
