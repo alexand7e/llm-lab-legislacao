@@ -10,6 +10,8 @@ Formato baseado em Keep a Changelog.
 
 ### Adicionado (M4 — RAG vetorial)
 
+- Experimento de variação de k (3, 5, 10) em `docs/experiments/2026-09-28-rag-variacao-k.md`;
+  `lab compare` passa a mostrar recall@10.
 - Estratégia `rag` (`src/lab/strategies/rag.py`, `prompts/rag_v1.md`): embedding
   da pergunta, busca dos k chunks mais próximos (`--k`, padrão 5) e resposta só
   com os trechos, citação obrigatória. `retrieved_ids` liga recall@k e MRR; o
